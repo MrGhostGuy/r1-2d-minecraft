@@ -16,7 +16,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #title .menu-btn:hover{background:#777;}
 #hud{position:absolute;top:0;left:0;width:240px;pointer-events:none;z-index:10;}
 #inv-bar{position:absolute;bottom:0;left:0;width:240px;height:22px;background:rgba(0,0,0,0.7);display:flex;z-index:10;}
-.inv-slot{width:24px;height:22px;border:1px solid #555;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;}
+.inv-slot{position:relative;width:24px;height:22px;border:1px solid #555;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;}
 .inv-slot.selected{border-color:#fff;background:rgba(255,255,255,0.2);}
 .inv-slot .count{font-size:6px;color:#fff;position:absolute;bottom:0;right:1px;}
 .inv-slot .block-icon{width:14px;height:14px;}
@@ -59,7 +59,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 var W=240,H=260,TILE=8,COLS=30,ROWS=32;
 var CHUNK_W=16,WORLD_W=256,WORLD_H=64,SEA=32;
 var BLOCKS={AIR:0,DIRT:1,GRASS:2,STONE:3,SAND:4,WOOD:5,LEAVES:6,COAL_ORE:7,IRON_ORE:8,GOLD_ORE:9,DIAMOND_ORE:10,PLANKS:11,COBBLE:12,BEDROCK:13,WATER:14,SNOW:15,GLASS:16,TORCH:17,FURNACE:18,CHEST:19,GRAVEL:20,CLAY:21,CACTUS:22};
-var ITEMS={STICK:100,WOOD_PICK:101,STONE_PICK:102,IRON_PICK:103,DIAMOND_PICK:104,WOOD_SWORD:105,STONE_SWORD:106,IRON_SWORD:107,DIAMOND_SWORD:108,WOOD_AXE:109,WOOD_SHOVEL:110,IRON_INGOT:111,GOLD_INGOT:112,DIAMOND:113,COAL:114,RAW_PORK:115,COOKED_PORK:116};
+var ITEMS={STICK:100,WOOD_PICK:101,STONE_PICK:102,IRON_PICK:103,DIAMOND_PICK:104,WOOD_SWORD:105,STONE_SWORD:106,IRON_SWORD:107,DIAMOND_SWORD:108,WOOD_AXE:109,WOOD_SHOVEL:110,IRON_INGOT:111,GOLD_INGOT:112,DIAMOND:113,COAL:114,RAW_PORK:115,COOKED_PORK:116,STONE_AXE:117,IRON_AXE:118,DIAMOND_AXE:119,STONE_SHOVEL:120,IRON_SHOVEL:121,DIAMOND_SHOVEL:122};
 var BCOLORS={};
 BCOLORS[0]='rgba(0,0,0,0)';BCOLORS[1]='#8B6914';BCOLORS[2]='#4a8f3f';BCOLORS[3]='#808080';BCOLORS[4]='#d2b48c';BCOLORS[5]='#8B5A2B';BCOLORS[6]='#228B22';BCOLORS[7]='#404040';BCOLORS[8]='#B87333';BCOLORS[9]='#FFD700';BCOLORS[10]='#00FFFF';BCOLORS[11]='#DEB887';BCOLORS[12]='#696969';BCOLORS[13]='#1a1a1a';BCOLORS[14]='rgba(30,100,200,0.6)';BCOLORS[15]='#F0F0F0';BCOLORS[16]='rgba(200,230,255,0.4)';BCOLORS[17]='#FFD700';BCOLORS[18]='#555';BCOLORS[19]='#8B4513';BCOLORS[20]='#9E9E9E';BCOLORS[21]='#B0A090';BCOLORS[22]='#006400';
 var BNAMES={};
@@ -70,10 +70,13 @@ var DROPS={};
 DROPS[2]=1;DROPS[3]=12;DROPS[5]=5;DROPS[6]=0;DROPS[7]=114;DROPS[8]=8;DROPS[9]=9;DROPS[10]=113;DROPS[15]=15;DROPS[16]=0;DROPS[17]=17;DROPS[18]=18;DROPS[22]=22;
 var ICOLORS={};
 ICOLORS[100]='#8B5A2B';ICOLORS[101]='#DEB887';ICOLORS[102]='#696969';ICOLORS[103]='#B87333';ICOLORS[104]='#00FFFF';ICOLORS[105]='#DEB887';ICOLORS[106]='#696969';ICOLORS[107]='#B87333';ICOLORS[108]='#00FFFF';ICOLORS[109]='#DEB887';ICOLORS[110]='#DEB887';ICOLORS[111]='#C0C0C0';ICOLORS[112]='#FFD700';ICOLORS[113]='#00FFFF';ICOLORS[114]='#333';ICOLORS[115]='#FF8080';ICOLORS[116]='#CC5533';
+ICOLORS[117]='#696969';ICOLORS[118]='#B87333';ICOLORS[119]='#00FFFF';ICOLORS[120]='#696969';ICOLORS[121]='#B87333';ICOLORS[122]='#00FFFF';
 var INAMES={};
 INAMES[100]='Stick';INAMES[101]='Wood Pick';INAMES[102]='Stone Pick';INAMES[103]='Iron Pick';INAMES[104]='Dia Pick';INAMES[105]='Wood Sword';INAMES[106]='Stone Sword';INAMES[107]='Iron Sword';INAMES[108]='Dia Sword';INAMES[109]='Wood Axe';INAMES[110]='Wood Shovel';INAMES[111]='Iron Ingot';INAMES[112]='Gold Ingot';INAMES[113]='Diamond';INAMES[114]='Coal';INAMES[115]='Raw Pork';INAMES[116]='Cooked Pork';
+INAMES[117]='Stone Axe';INAMES[118]='Iron Axe';INAMES[119]='Diamond Axe';INAMES[120]='Stone Shovel';INAMES[121]='Iron Shovel';INAMES[122]='Diamond Shovel';
 var TOOL_POWER={};
 TOOL_POWER[101]=2;TOOL_POWER[102]=4;TOOL_POWER[103]=6;TOOL_POWER[104]=8;TOOL_POWER[109]=3;TOOL_POWER[110]=2;
+TOOL_POWER[117]=4;TOOL_POWER[118]=6;TOOL_POWER[119]=8;TOOL_POWER[120]=3;TOOL_POWER[121]=5;TOOL_POWER[122]=7;
 var SWORD_DMG={};
 SWORD_DMG[105]=4;SWORD_DMG[106]=5;SWORD_DMG[107]=6;SWORD_DMG[108]=8;
 var FOOD_HEAL={};
@@ -92,6 +95,7 @@ var RECIPES=[
 {inp:[[113,2],[100,1]],out:108,cnt:1,name:'Dia Sword'},
 {inp:[[11,3],[100,2]],out:109,cnt:1,name:'Wood Axe'},
 {inp:[[11,1],[100,2]],out:110,cnt:1,name:'Wood Shovel'},
+{inp:[[12,3],[100,2]],out:117,cnt:1,name:'Stone Axe'},{inp:[[111,3],[100,2]],out:118,cnt:1,name:'Iron Axe'},{inp:[[113,3],[100,2]],out:119,cnt:1,name:'Diamond Axe'},{inp:[[12,1],[100,2]],out:120,cnt:1,name:'Stone Shovel'},{inp:[[111,1],[100,2]],out:121,cnt:1,name:'Iron Shovel'},{inp:[[113,1],[100,2]],out:122,cnt:1,name:'Diamond Shovel'},
 {inp:[[12,8]],out:18,cnt:1,name:'Furnace'},
 {inp:[[11,8]],out:19,cnt:1,name:'Chest'},
 {inp:[[114,1],[100,1]],out:17,cnt:4,name:'Torch'},
@@ -212,7 +216,7 @@ if(cursorY<0)cursorY=0;if(cursorY>=WORLD_H)cursorY=WORLD_H-1;
 function addItem(id,count){
 if(!count)count=1;if(id==0)return false;
 for(var i=0;i<36;i++){if(inventory[i].id==id&&inventory[i].count<64){var add=Math.min(count,64-inventory[i].count);inventory[i].count+=add;count-=add;if(count<=0)return true;}}
-for(var i=0;i<36;i++){if(inventory[i].id==0){inventory[i].id=id;inventory[i].count=Math.min(count,64);count-=inventory[i].count;if(count<=0)return true;}}
+for(var i=0;i<36;i++){if(inventory[i].id==0){inventory[i].id=id;inventory[i].count=Math.min(count,64);if(TOOL_TIER[id])initToolDur(i,id);count-=inventory[i].count;if(count<=0)return true;}}
 return false;
 }
 function removeItem(id,count){
@@ -229,12 +233,14 @@ if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)return;
 var b=world[bx][by];if(b==BLOCKS.AIR||b==BLOCKS.WATER||b==BLOCKS.BEDROCK)return;
 var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);
 var dist=Math.abs(bx-px)+Math.abs(by-py);if(dist>5)return;
+var req=MINE_REQ[b];if(req){var tl=getToolTierLevel(getHeldItem().id);if(tl<req)return;}
 var hard=HARDNESS[b]||1;
 var held=getHeldItem();var power=1;
 if(held.id>=100&&TOOL_POWER[held.id])power=TOOL_POWER[held.id];
 miningProgress+=power*0.05;
 if(miningProgress>=hard){
 miningProgress=0;
+if(held.id>=101&&held.id<=122)useToolDur(player.selectedSlot);
 var drop=DROPS[b]!==undefined?DROPS[b]:b;
 if(drop!=0)addItem(drop,1);
 world[bx][by]=BLOCKS.AIR;
@@ -313,7 +319,7 @@ if(SWORD_DMG[held.id])dmg=SWORD_DMG[held.id];
 for(var i=0;i<entities.length;i++){
 var e=entities[i];
 var adx=Math.abs(player.x-e.x),ady=Math.abs(player.y-e.y);
-if(adx<16&&ady<16){e.hp-=dmg;e.vx=player.dir*3;e.vy=-2;player.attacking=10;break;}
+if(adx<16&&ady<16){e.hp-=dmg;e.vx=player.dir*3;e.vy=-2;player.attacking=10;if(held.id>=101&&held.id<=122)useToolDur(player.selectedSlot);break;}
 }
 }
 // === DAY-NIGHT CYCLE ===
@@ -331,6 +337,35 @@ if(t<0.9){var f=(t-0.75)/0.15;return'rgb('+Math.floor(10+245*f)+','+Math.floor(1
 var f=(t-0.9)/0.1;return'rgb('+Math.floor(255-155*f)+','+Math.floor(70+100*f)+','+Math.floor(100+155*f)+')';
 }
 function gameOver(){gameState='dead';}
+
+// === TOOL TIERS & DURABILITY ===
+var TOOL_TIER={101:'wood',102:'stone',103:'iron',104:'diamond',105:'wood',106:'stone',107:'iron',108:'diamond',109:'wood',117:'stone',118:'iron',119:'diamond',110:'wood',120:'stone',121:'iron',122:'diamond'};
+var TIER_COLORS={wood:'#C4A05A',stone:'#888',iron:'#D8D8D8',diamond:'#5CF0EE'};
+var TIER_DUR={wood:60,stone:132,iron:251,diamond:1562};
+var toolDurability={};
+function getToolDur(slot){var k='s'+slot;if(!toolDurability[k])return null;return toolDurability[k];}
+function useToolDur(slot){var k='s'+slot;if(!toolDurability[k])return;toolDurability[k].cur--;if(toolDurability[k].cur<=0){player.inv[slot]={id:0,count:0};delete toolDurability[k];}}
+function initToolDur(slot,id){var t=TOOL_TIER[id];if(t){var k='s'+slot;toolDurability[k]={cur:TIER_DUR[t],max:TIER_DUR[t]};}}
+
+var TIER_LEVEL={wood:1,stone:2,iron:3,diamond:4};
+var MINE_REQ={8:2,9:3,10:3};
+function getToolTierLevel(id){var t=TOOL_TIER[id];return t?TIER_LEVEL[t]:0;}
+// === TOOL SPRITE RENDERER ===
+var spriteCache={};
+function drawToolSprite(ctx2,x,y,w,h,id){
+var key=id+'_'+w;if(spriteCache[key]){ctx2.drawImage(spriteCache[key],x,y,w,h);return;}
+var oc=document.createElement('canvas');oc.width=16;oc.height=16;var g=oc.getContext('2d');
+var tier=TOOL_TIER[id]||'wood';var hc=TIER_COLORS[tier]||'#C4A05A';var hd='#8B6914';
+var type='';if([101,102,103,104].indexOf(id)>=0)type='pick';
+else if([105,106,107,108].indexOf(id)>=0)type='sword';
+else if([109,117,118,119].indexOf(id)>=0)type='axe';
+else if([110,120,121,122].indexOf(id)>=0)type='shovel';
+g.fillStyle=hd;
+if(type=='pick'){g.fillRect(4,10,2,2);g.fillRect(6,8,2,2);g.fillRect(8,6,2,2);g.fillRect(10,4,2,2);g.fillStyle=hc;g.fillRect(2,2,12,2);g.fillRect(2,2,2,4);g.fillRect(12,2,2,4);}
+else if(type=='sword'){g.fillRect(6,10,2,2);g.fillRect(8,8,2,2);g.fillStyle='#654321';g.fillRect(4,12,2,2);g.fillRect(5,11,4,2);g.fillStyle=hc;g.fillRect(8,2,2,6);g.fillRect(10,2,2,2);}
+else if(type=='axe'){g.fillRect(4,10,2,2);g.fillRect(6,8,2,2);g.fillRect(8,6,2,2);g.fillStyle=hc;g.fillRect(8,2,4,4);g.fillRect(10,4,4,2);g.fillRect(12,2,2,2);}
+else if(type=='shovel'){g.fillRect(6,6,2,2);g.fillRect(8,4,2,2);g.fillRect(4,10,2,2);g.fillRect(6,8,2,2);g.fillStyle=hc;g.fillRect(8,0,4,4);g.fillRect(10,2,2,4);}
+spriteCache[key]=oc;ctx2.drawImage(oc,x,y,w,h);}
 // === RENDERING ===
 var zoomLevel=1.0,zoomPanelOpen=false;
 function toggleZoom(){zoomPanelOpen=!zoomPanelOpen;var p=document.getElementById('zoom-panel');if(zoomPanelOpen)p.classList.add('open');else p.classList.remove('open');}
@@ -381,11 +416,13 @@ var px=player.x-camX,py=player.y-camY;
 ctx.fillStyle='#a67c52';ctx.fillRect(px+1,py,4,4); // head
 ctx.fillStyle='#2266aa';ctx.fillRect(px,py+4,6,5); // body
 ctx.fillStyle='#1a1a8a';ctx.fillRect(px+1,py+9,2,3);ctx.fillRect(px+3,py+9,2,3); // legs
+// Held tool
+var ht=getHeldItem();if(ht.id>=101&&ht.id<=122&&TOOL_TIER[ht.id]&&player.attacking<=0){var tx=px+(player.dir>0?5:-5),ty=py+2;drawToolSprite(ctx,tx,ty,6,6,ht.id);}
 // Attack animation
 if(player.attacking>0){
-ctx.fillStyle='#aaa';
-var ax=px+(player.dir>0?6:-4),ay=py+3;
-ctx.fillRect(ax,ay,3,1);player.attacking--;
+var hld=getHeldItem();var ax=px+(player.dir>0?6:-4),ay=py+1;
+if(hld.id>=101&&hld.id<=122&&TOOL_TIER[hld.id]){drawToolSprite(ctx,ax-camX+camX,ay,8,8,hld.id);}else{ctx.fillStyle='#aaa';ctx.fillRect(ax,ay+2,3,1);}
+player.attacking--;
 }
 // Entities
 for(var i=0;i<entities.length;i++){
@@ -407,8 +444,9 @@ for(var i=0;i<9;i++){
 var s=inventory[i];var div=document.createElement('div');div.className='inv-slot'+(i==player.selectedSlot?' selected':'');
 if(s.id>0){
 var icon=document.createElement('div');icon.className='block-icon';
-icon.style.background=s.id<100?BCOLORS[s.id]:(ICOLORS[s.id]||'#fff');
+if(s.id>=101&&s.id<=122&&TOOL_TIER[s.id]){var tc=document.createElement('canvas');tc.width=16;tc.height=16;drawToolSprite(tc.getContext('2d'),0,0,16,16,s.id);icon.style.background='url('+tc.toDataURL()+') center/contain no-repeat';}else{icon.style.background=s.id<100?BCOLORS[s.id]:(ICOLORS[s.id]||'#fff');}
 icon.style.width='14px';icon.style.height='14px';div.appendChild(icon);
+var td=getToolDur(i);if(td){var db=document.createElement('div');db.style.cssText='position:absolute;bottom:1px;left:1px;height:2px;width:'+Math.round(12*td.cur/td.max)+'px;background:'+(td.cur/td.max>0.5?'#0f0':td.cur/td.max>0.25?'#ff0':'#f00')+';';div.appendChild(db);}
 var cnt=document.createElement('span');cnt.className='count';cnt.textContent=s.count>1?s.count:'';div.appendChild(cnt);
 }
 hb.appendChild(div);
@@ -454,6 +492,7 @@ function craftItem(rec){
 for(var j=0;j<rec.inp.length;j++){if(countItem(rec.inp[j][0])<rec.inp[j][1])return;}
 for(var j=0;j<rec.inp.length;j++){removeItem(rec.inp[j][0],rec.inp[j][1]);}
 addItem(rec.out,rec.cnt);
+if(TOOL_TIER[rec.out]){for(var ti=0;ti<9;ti++){if(player.inv[ti].id==rec.out&&!getToolDur(ti)){initToolDur(ti,rec.out);break;}}}
 showCrafting();
 }
 // === CONTROLS ===
