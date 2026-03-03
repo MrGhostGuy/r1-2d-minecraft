@@ -45,6 +45,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #furnace-screen .smelt-slot:active{background:rgba(255,140,0,0.4);}
 #furnace-screen .fuel-info{font-size:8px;color:#f80;margin:4px 0;}
 #furnace-screen .close-btn{margin-top:6px;padding:4px 16px;background:#555;border:1px solid #888;color:#fff;font-size:9px;cursor:pointer;border-radius:3px;}
+
+#autolock-btn{position:absolute;top:28px;right:2px;width:24px;height:24px;background:rgba(0,180,0,0.7);border:1px solid #0f0;border-radius:4px;color:#fff;font-size:10px;cursor:pointer;z-index:20;text-align:center;line-height:24px;font-weight:bold;}
+#autolock-btn.off{background:rgba(180,0,0,0.7);border-color:#f00;}
+#autolock-status{position:absolute;top:54px;right:2px;width:60px;background:rgba(0,0,0,0.6);border-radius:3px;color:#0f0;font-size:7px;z-index:20;text-align:center;padding:1px;display:none;font-family:monospace;}
+#autolock-status.active{display:block;}
 </style>
 </head>
 <body>
@@ -56,6 +61,9 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
     <div class="menu-btn" onclick="startGame('creative')"><b>Creative Mode</b><br><span style="font-size:6px;color:#aaa">Fly, Infinite Blocks, No Damage</span></div>
 </div>
 <canvas id="game" width="240" height="260"></canvas>
+<div id="autolock-btn" onclick="toggleAutoLock()" ontouchstart="event.stopPropagation()">AL</div>
+<div id="autolock-status"></div>
+
 <div id="zoom-btn" onclick="toggleZoom()">&#128269;</div>
 <div id="zoom-panel"><span id="zoom-label">1.0x</span><input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1" oninput="setZoom(this.value)" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()"></div>
 <div id="health-bar"></div>
@@ -444,6 +452,17 @@ removeItem(id,1);
 addItem(SMELT[id],1);
 openFurnace();
 }
+// === AUTO-LOCK TARGETING SYSTEM ===
+var autoLockEnabled=true,autoLockTarget=null,autoLockWalk=true,autoLockPulse=0;
+var PICK_IDS=[101,102,103,104],AXE_IDS=[109,117,118,119];
+var ORE_BLOCKS=[10,9,8,7,3,12],WOOD_BLOCKS=[5];
+var ORE_PRIORITY={10:6,9:5,8:4,7:3,3:1,12:1};
+var AUTO_LOCK_RANGE=7,MINE_RANGE=5;
+function toggleAutoLock(){autoLockEnabled=!autoLockEnabled;autoLockTarget=null;var btn=document.getElementById('autolock-btn');btn.className=autoLockEnabled?'':'off';btn.textContent=autoLockEnabled?'AL':'al';var st=document.getElementById('autolock-status');st.className=autoLockEnabled?'active':'';st.textContent=autoLockEnabled?'AUTO-LOCK ON':'';if(autoLockEnabled)showGameMsg('Auto-Lock ON');else showGameMsg('Auto-Lock OFF');}
+function getToolType(){var h=getHeldItem();if(!h||h.id<100)return 0;for(var i=0;i<PICK_IDS.length;i++)if(h.id==PICK_IDS[i])return 1;for(var i=0;i<AXE_IDS.length;i++)if(h.id==AXE_IDS[i])return 2;return 0;}
+function findAutoLockTarget(){if(!autoLockEnabled)return null;var tt=getToolType();if(tt==0)return null;var targets=tt==1?ORE_BLOCKS:WOOD_BLOCKS;var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);var best=null,bestScore=-1;for(var dx=-AUTO_LOCK_RANGE;dx<=AUTO_LOCK_RANGE;dx++){for(var dy=-AUTO_LOCK_RANGE;dy<=AUTO_LOCK_RANGE;dy++){var bx=px+dx,by=py+dy;if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)continue;var b=world[bx][by];var isTarget=false;for(var t=0;t<targets.length;t++)if(b==targets[t]){isTarget=true;break;}if(!isTarget)continue;var dist=Math.abs(dx)+Math.abs(dy);var priority=tt==1?(ORE_PRIORITY[b]||1):2;var score=priority*100-dist*10;if(score>bestScore){bestScore=score;best={x:bx,y:by,block:b,dist:dist};}}}return best;}
+function updateAutoLock(){if(!autoLockEnabled||gameState!='playing')return;autoLockPulse=(autoLockPulse+0.05)%6.28;if(autoLockTarget&&world[autoLockTarget.x]&&world[autoLockTarget.x][autoLockTarget.y]==0){autoLockTarget=null;miningProgress=0;}var newTarget=findAutoLockTarget();if(newTarget){autoLockTarget=newTarget;cursorX=newTarget.x;cursorY=newTarget.y;var st=document.getElementById('autolock-status');st.className='active';var bname='Block';if(newTarget.block==10)bname='DIAMOND';else if(newTarget.block==9)bname='GOLD';else if(newTarget.block==8)bname='IRON';else if(newTarget.block==7)bname='COAL';else if(newTarget.block==3)bname='STONE';else if(newTarget.block==12)bname='COBBLE';else if(newTarget.block==5)bname='WOOD';st.textContent=bname+' d:'+newTarget.dist;if(autoLockWalk&&newTarget.dist>MINE_RANGE){var tx=newTarget.x*TILE+TILE/2,ty=newTarget.y*TILE;if(player.x<tx-4)keys.left=false,keys.right=true;else if(player.x>tx+4)keys.left=true,keys.right=false;else keys.left=false,keys.right=false;}else if(autoLockWalk&&newTarget.dist<=MINE_RANGE){keys.left=false;keys.right=false;}}else{autoLockTarget=null;var st=document.getElementById('autolock-status');st.className='active';st.textContent='No target';}}
+function renderAutoLock(){if(!autoLockEnabled||!autoLockTarget||gameState!='playing')return;var t=autoLockTarget;var sx=t.x*TILE-camX,sy=t.y*TILE-camY;var pulse=Math.sin(autoLockPulse)*0.3+0.7;ctx.strokeStyle='rgba(0,255,0,'+pulse+')';ctx.lineWidth=2;ctx.strokeRect(sx-1,sy-1,TILE+2,TILE+2);ctx.strokeStyle='rgba(255,255,0,'+pulse*0.5+')';ctx.lineWidth=1;ctx.strokeRect(sx-3,sy-3,TILE+6,TILE+6);if(t.dist<=MINE_RANGE){ctx.fillStyle='rgba(0,255,0,0.15)';ctx.fillRect(sx,sy,TILE,TILE);}else{ctx.fillStyle='rgba(255,0,0,0.15)';ctx.fillRect(sx,sy,TILE,TILE);var mx=player.x-camX+3,my=player.y-camY-2;ctx.strokeStyle='rgba(255,255,0,0.4)';ctx.setLineDash([2,2]);ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(sx+TILE/2,sy+TILE/2);ctx.stroke();ctx.setLineDash([]);}if(miningProgress>0){var hard=HARDNESS[t.block]||1;var pct=miningProgress/hard;ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(sx,sy-4,TILE,3);ctx.fillStyle=pct>0.6?'#0f0':pct>0.3?'#ff0':'#f00';ctx.fillRect(sx,sy-4,TILE*pct,3);}}
 // === RENDERING ===
 var zoomLevel=1.0,zoomPanelOpen=false;
 function toggleZoom(){zoomPanelOpen=!zoomPanelOpen;var p=document.getElementById('zoom-panel');if(zoomPanelOpen)p.classList.add('open');else p.classList.remove('open');}
@@ -574,7 +593,7 @@ if(canCraft){(function(rec){div.onclick=function(){craftItem(rec);};})(rec);}
 rl.appendChild(div);
 }
 }
-function hideCrafting(){gameState='playing';document.getElementById('zoom-btn').style.display='block';document.getElementById('craft-screen').style.display='none';}
+function hideCrafting(){gameState='playing';document.getElementById('zoom-btn').style.display='block';document.getElementById('autolock-btn').style.display='block';document.getElementById('craft-screen').style.display='none';}
 function craftItem(rec){
 for(var j=0;j<rec.inp.length;j++){if(countItem(rec.inp[j][0])<rec.inp[j][1])return;}
 for(var j=0;j<rec.inp.length;j++){removeItem(rec.inp[j][0],rec.inp[j][1]);}
@@ -678,7 +697,7 @@ dt=(now-lastTime)/16.67;if(dt>3)dt=3;lastTime=now;
 if(gameState=='playing'){
 updatePlayer(dt);updateHunger(dt);updateDayNight();spawnEnemies();updateEntities(dt);
 if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
-render();ctx.restore();renderHUD();
+render();renderAutoLock();ctx.restore();renderHUD();
 if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
 
 }
