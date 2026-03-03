@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -29,6 +29,13 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #pause-menu{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.8);z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;}
 #health-bar{position:absolute;top:2px;left:2px;z-index:10;}
 #time-display{position:absolute;top:2px;right:2px;font-size:7px;color:#fff;z-index:10;text-shadow:1px 1px #000;}
+#zoom-btn{position:absolute;top:2px;right:2px;width:24px;height:24px;background:rgba(0,0,0,0.6);border:1px solid #888;border-radius:4px;color:#fff;font-size:14px;cursor:pointer;z-index:20;display:none;text-align:center;line-height:24px;}
+#zoom-btn:active{background:rgba(255,255,255,0.3);}
+#zoom-panel{position:absolute;top:28px;left:0;width:240px;height:22px;background:rgba(0,0,0,0.7);display:none;z-index:20;align-items:center;justify-content:center;padding:0 4px;box-sizing:border-box;}
+#zoom-panel.open{display:flex;}
+#zoom-slider{width:170px;height:14px;-webkit-appearance:none;appearance:none;background:#333;outline:none;border-radius:7px;margin:0 4px;}
+#zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;background:#5c3;border-radius:50%;cursor:pointer;}
+#zoom-label{color:#fff;font-size:7px;min-width:28px;text-align:center;}
 </style>
 </head>
 <body>
@@ -40,6 +47,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <div class="menu-btn" onclick="startGame('creative')">Creative Mode</div>
 </div>
 <canvas id="game" width="240" height="260"></canvas>
+<div id="zoom-btn" onclick="toggleZoom()">&#128269;</div>
+<div id="zoom-panel"><span id="zoom-label">1.0x</span><input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1" oninput="setZoom(this.value)" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()"></div>
 <div id="health-bar"></div>
 <div id="time-display"></div>
 <div id="inv-bar"></div>
@@ -330,7 +339,7 @@ camX=player.x-W/2+player.w/2;camY=player.y-H/2+player.h/2;
 if(camX<0)camX=0;if(camX>WORLD_W*TILE-W)camX=WORLD_W*TILE-W;
 if(camY<0)camY=0;if(camY>WORLD_H*TILE-H)camY=WORLD_H*TILE-H;
 // Sky
-ctx.fillStyle=getSkyColor();ctx.fillRect(0,0,W,H);
+ctx.save();ctx.translate(W/2,H/2);ctx.scale(zoomLevel,zoomLevel);ctx.translate(-W/2,-H/2);ctx.fillStyle=getSkyColor();ctx.fillRect(0,0,W,H);
 // Stars at night
 if(isNight){ctx.fillStyle='#fff';for(var i=0;i<20;i++){var sx=(i*73+17)%W,sy=(i*41+7)%(H/2);ctx.fillRect(sx,sy,1,1);}}
 // Blocks
@@ -437,7 +446,7 @@ if(canCraft){(function(rec){div.onclick=function(){craftItem(rec);};})(rec);}
 rl.appendChild(div);
 }
 }
-function hideCrafting(){gameState='playing';document.getElementById('craft-screen').style.display='none';}
+function hideCrafting(){gameState='playing';document.getElementById('zoom-btn').style.display='block';document.getElementById('craft-screen').style.display='none';}
 function craftItem(rec){
 for(var j=0;j<rec.inp.length;j++){if(countItem(rec.inp[j][0])<rec.inp[j][1])return;}
 for(var j=0;j<rec.inp.length;j++){removeItem(rec.inp[j][0],rec.inp[j][1]);}
@@ -481,7 +490,7 @@ window.addEventListener('sideClick',function(){
 if(gameState=='title'){startGame('survival');return;}
 if(gameState=='crafting'){hideCrafting();return;}
 if(gameState=='dead'){restartGame();return;}
-mineBlock();
+var bx=cursorX,by=cursorY;if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H){if(world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER&&world[bx][by]!=BLOCKS.BEDROCK){mineBlock();}else{placeBlock();}}
 });
 var sideHoldTimer=null;
 window.addEventListener('longPressStart',function(){
@@ -496,7 +505,7 @@ if(sideHoldTimer){clearTimeout(sideHoldTimer);sideHoldTimer=null;}
 var touchMode='move';
 document.addEventListener('touchstart',function(e){
 e.preventDefault();var t=e.touches[0];touchStartX=t.clientX;touchStartY=t.clientY;touchActive=true;
-var tx=Math.floor((t.clientX+camX)/TILE),ty=Math.floor((t.clientY+camY)/TILE);
+var sx=t.clientX,sy=t.clientY;var ux=(sx-W/2)/zoomLevel+W/2;var uy=(sy-H/2)/zoomLevel+H/2;var tx=Math.floor((ux+camX)/TILE),ty=Math.floor((uy+camY)/TILE);
 if(tx>=0&&tx<WORLD_W&&ty>=0&&ty<WORLD_H){cursorX=tx;cursorY=ty;}
 },{passive:false});
 document.addEventListener('touchmove',function(e){
@@ -513,6 +522,10 @@ function startGame(mode){
 gameMode=mode;gameState='playing';
 document.getElementById('title').style.display='none';
 canvas=document.getElementById('game');ctx=canvas.getContext('2d');
+var zoomLevel=1.0,zoomPanelOpen=false;
+function toggleZoom(){zoomPanelOpen=!zoomPanelOpen;var p=document.getElementById('zoom-panel');if(zoomPanelOpen)p.classList.add('open');else p.classList.remove('open');}
+function setZoom(v){zoomLevel=parseFloat(v);document.getElementById('zoom-label').textContent=zoomLevel.toFixed(1)+'x';}
+
 generateWorld();
 if(mode=='creative'){for(var b=1;b<=22;b++)if(b!=14&&b!=13)addItem(b,64);}
 else{addItem(BLOCKS.WOOD,10);addItem(BLOCKS.PLANKS,5);}
@@ -533,7 +546,7 @@ dt=(now-lastTime)/16.67;if(dt>3)dt=3;lastTime=now;
 if(gameState=='playing'){
 updatePlayer(dt);updateDayNight();spawnEnemies();updateEntities(dt);
 if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
-render();renderHUD();
+render();ctx.restore();renderHUD();
 }
 if(gameState=='dead'){
 ctx.fillStyle='rgba(200,0,0,0.3)';ctx.fillRect(0,0,W,H);
