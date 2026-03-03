@@ -27,6 +27,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 .recipe .r-name{flex:1;font-size:7px;}
 .recipe .r-cost{font-size:6px;color:#aaa;}
 #pause-menu{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.8);z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;}
+#hunger-bar{position:absolute;top:12px;left:2px;z-index:10;font-size:7px;}
+#fly-indicator{position:absolute;top:22px;left:2px;color:#0ff;font-size:7px;z-index:10;display:none;}
 #health-bar{position:absolute;top:2px;left:2px;z-index:10;}
 #time-display{position:absolute;top:2px;right:2px;font-size:7px;color:#fff;z-index:10;text-shadow:1px 1px #000;}
 #zoom-btn{position:absolute;top:2px;right:2px;width:24px;height:24px;background:rgba(0,0,0,0.6);border:1px solid #888;border-radius:4px;color:#fff;font-size:14px;cursor:pointer;z-index:20;display:block;text-align:center;line-height:24px;}
@@ -36,6 +38,13 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #zoom-slider{width:170px;height:14px;-webkit-appearance:none;appearance:none;background:#333;outline:none;border-radius:7px;margin:0 4px;}
 #zoom-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;background:#5c3;border-radius:50%;cursor:pointer;}
 #zoom-label{color:#fff;font-size:7px;min-width:28px;text-align:center;}
+
+#furnace-screen{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.85);z-index:30;display:none;flex-direction:column;align-items:center;padding-top:10px;color:#fff;font-family:monospace;}
+#furnace-screen h3{color:#f80;margin:0 0 6px 0;font-size:11px;}
+#furnace-screen .smelt-slot{width:180px;padding:4px 8px;margin:2px 0;background:rgba(80,80,80,0.8);border:1px solid #666;border-radius:3px;font-size:9px;color:#ccc;cursor:pointer;text-align:left;}
+#furnace-screen .smelt-slot:active{background:rgba(255,140,0,0.4);}
+#furnace-screen .fuel-info{font-size:8px;color:#f80;margin:4px 0;}
+#furnace-screen .close-btn{margin-top:6px;padding:4px 16px;background:#555;border:1px solid #888;color:#fff;font-size:9px;cursor:pointer;border-radius:3px;}
 </style>
 </head>
 <body>
@@ -43,16 +52,19 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <h1>2D MINECRAFT</h1>
 <h2>Rabbit R1 Edition</h2>
 <div class="credit">Created by Jeff Hollaway [GhostLegacyX]</div>
-<div class="menu-btn" onclick="startGame('survival')">Survival Mode</div>
-<div class="menu-btn" onclick="startGame('creative')">Creative Mode</div>
+<div class="menu-btn" onclick="startGame('survival')"><b>Survival Mode</b><br><span style="font-size:6px;color:#aaa">Health, Hunger, Mobs, Crafting</span></div>
+    <div class="menu-btn" onclick="startGame('creative')"><b>Creative Mode</b><br><span style="font-size:6px;color:#aaa">Fly, Infinite Blocks, No Damage</span></div>
 </div>
 <canvas id="game" width="240" height="260"></canvas>
 <div id="zoom-btn" onclick="toggleZoom()">&#128269;</div>
 <div id="zoom-panel"><span id="zoom-label">1.0x</span><input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1" oninput="setZoom(this.value)" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()"></div>
 <div id="health-bar"></div>
+<div id="hunger-bar"></div>
+<div id="fly-indicator">FLYING</div>
 <div id="time-display"></div>
 <div id="inv-bar"></div>
 <div id="craft-screen"><h3>Crafting</h3><div id="recipe-list"></div></div>
+<div id="furnace-screen"><h3>&#128293; Furnace</h3><div class="fuel-info">Fuel: 1 Coal per smelt</div><div id="smelt-list"></div><div class="close-btn" onclick="closeFurnace()">Close</div></div>
 <div id="pause-menu"><h3>PAUSED</h3><div class="menu-btn" onclick="resumeGame()">Resume</div></div>
 <script>
 // === GAME CONSTANTS ===
@@ -105,7 +117,7 @@ var SMELT={};SMELT[8]=111;SMELT[9]=112;SMELT[4]=16;SMELT[115]=116;SMELT[12]=3;
 // === GAME STATE ===
 var canvas,ctx,gameState='title',gameMode='survival';
 var world=[],camX=0,camY=0;
-var player={x:128,y:0,vx:0,vy:0,w:6,h:12,onGround:false,hp:20,maxHp:20,air:10,selectedSlot:0,mining:0,mineX:-1,mineY:-1,dir:1,attacking:0};
+var player={x:128,y:0,vx:0,vy:0,w:6,h:12,onGround:false,hp:20,maxHp:20,air:10,selectedSlot:0,mining:0,mineX:-1,mineY:-1,dir:1,attacking:0,hunger:20,maxHunger:20,hungerTimer:0,flying:false,fallDist:0,lastY:0};
 var inventory=[];for(var i=0;i<36;i++)inventory.push({id:0,count:0});
 var hotbar=9,cursorX=15,cursorY=15;
 var dayTime=0,dayLength=12000,isNight=false;
@@ -141,10 +153,10 @@ else world[x][y]=BLOCKS.DIRT;
 world[x][y]=BLOCKS.STONE;
 // Ores
 var oreN=Math.random();
-if(y>h+10&&oreN<0.01)world[x][y]=BLOCKS.DIAMOND_ORE;
-else if(y>h+8&&oreN<0.03)world[x][y]=BLOCKS.GOLD_ORE;
-else if(y>h+5&&oreN<0.06)world[x][y]=BLOCKS.IRON_ORE;
-else if(y>h+3&&oreN<0.1)world[x][y]=BLOCKS.COAL_ORE;
+if(y>h+16&&oreN<0.008)world[x][y]=BLOCKS.DIAMOND_ORE;
+else if(y>h+12&&oreN<0.02)world[x][y]=BLOCKS.GOLD_ORE;
+else if(y>h+6&&oreN<0.05)world[x][y]=BLOCKS.IRON_ORE;
+else if(y>h+2&&oreN<0.09)world[x][y]=BLOCKS.COAL_ORE;
 else if(oreN<0.04)world[x][y]=BLOCKS.GRAVEL;
 }else{world[x][y]=BLOCKS.BEDROCK;}
 }
@@ -181,6 +193,8 @@ function getBiome(x,seed){var b=octaveNoise((x+seed)*0.005,2);if(b<-0.3)return 2
 function isSolid(x,y){if(x<0||x>=WORLD_W||y<0||y>=WORLD_H)return true;var b=world[x][y];return b!=BLOCKS.AIR&&b!=BLOCKS.WATER&&b!=BLOCKS.TORCH;}
 function updatePlayer(dt){
 var spd=1.2,grav=0.3,jumpF=-4.5,maxFall=5;
+if(player.flying){grav=0;player.vy=0;if(keys.up)player.vy=-2;if(keys.down)player.vy=2;}
+applyFallDamage();
 if(keys.left){player.vx=-spd;player.dir=-1;}
 else if(keys.right){player.vx=spd;player.dir=1;}
 else player.vx*=0.6;
@@ -230,14 +244,15 @@ function getHeldItem(){return inventory[player.selectedSlot];}
 function mineBlock(){
 var bx=cursorX,by=cursorY;
 if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)return;
-var b=world[bx][by];if(b==BLOCKS.AIR||b==BLOCKS.WATER||b==BLOCKS.BEDROCK)return;
+var b=world[bx][by];if(b==BLOCKS.FURNACE){openFurnace();return;}
+if(b==BLOCKS.AIR||b==BLOCKS.WATER||b==BLOCKS.BEDROCK)return;
 var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);
 var dist=Math.abs(bx-px)+Math.abs(by-py);if(dist>5)return;
-var req=MINE_REQ[b];if(req){var tl=getToolTierLevel(getHeldItem().id);if(tl<req)return;}
+var req=MINE_REQ[b];if(req){var tl=getToolTierLevel(getHeldItem().id);if(tl<req){var tierNames={1:'wooden',2:'stone',3:'iron',4:'diamond'};showGameMsg('Need '+tierNames[req]+' pickaxe!');return;}}
 var hard=HARDNESS[b]||1;
 var held=getHeldItem();var power=1;
 if(held.id>=100&&TOOL_POWER[held.id])power=TOOL_POWER[held.id];
-miningProgress+=power*0.05;
+if(gameMode=="creative"){miningProgress=hard;}else{miningProgress+=power*0.05;}
 if(miningProgress>=hard){
 miningProgress=0;
 if(held.id>=101&&held.id<=122)useToolDur(player.selectedSlot);
@@ -259,14 +274,15 @@ if(bx>=Math.floor(player.x/TILE)&&bx<=Math.floor((player.x+player.w)/TILE)&&by>=
 var held=getHeldItem();
 if(held.id>0&&held.id<100){
 world[bx][by]=held.id;
-held.count--;if(held.count<=0){held.id=0;held.count=0;}
+if(gameMode!="creative"){held.count--;if(held.count<=0){held.id=0;held.count=0;}}
 }
 }
 function eatFood(){
 var held=getHeldItem();
-if(FOOD_HEAL[held.id]&&player.hp<player.maxHp){
+if(FOOD_HEAL[held.id]&&(player.hp<player.maxHp||player.hunger<player.maxHunger)){
 player.hp=Math.min(player.maxHp,player.hp+FOOD_HEAL[held.id]);
-held.count--;if(held.count<=0){held.id=0;held.count=0;}
+player.hunger=Math.min(player.maxHunger,player.hunger+FOOD_HEAL[held.id]*2);
+if(gameMode!="creative"){held.count--;if(held.count<=0){held.id=0;held.count=0;}}
 }
 }
 // === ENEMIES ===
@@ -304,7 +320,7 @@ if(gtx>=0&&gtx<WORLD_W&&gty>=0&&gty<WORLD_H&&isSolid(gtx,gty)){e.y=gty*TILE-e.h;
 var adx=Math.abs(player.x-e.x),ady=Math.abs(player.y-e.y);
 if(adx<10&&ady<14&&gameMode=='survival'){
 e.atkTimer++;
-if(e.atkTimer>30){e.atkTimer=0;player.hp-=e.type=='zombie'?3:2;if(player.hp<=0)gameOver();}
+if(e.atkTimer>30){e.atkTimer=0;if(gameMode!='creative'){player.hp-=e.type=='zombie'?3:2;}if(player.hp<=0)gameOver();}
 }
 // Remove if too far or dead
 if(e.hp<=0||Math.abs(e.x-player.x)>300*TILE){
@@ -336,7 +352,7 @@ if(t<0.75)return'rgb(10,10,30)';
 if(t<0.9){var f=(t-0.75)/0.15;return'rgb('+Math.floor(10+245*f)+','+Math.floor(10+60*f)+','+Math.floor(30+70*f)+')';}
 var f=(t-0.9)/0.1;return'rgb('+Math.floor(255-155*f)+','+Math.floor(70+100*f)+','+Math.floor(100+155*f)+')';
 }
-function gameOver(){gameState='dead';}
+function gameOver(){if(gameMode=='creative'){player.hp=player.maxHp;return;}gameState='dead';}
 
 // === TOOL TIERS & DURABILITY ===
 var TOOL_TIER={101:'wood',102:'stone',103:'iron',104:'diamond',105:'wood',106:'stone',107:'iron',108:'diamond',109:'wood',117:'stone',118:'iron',119:'diamond',110:'wood',120:'stone',121:'iron',122:'diamond'};
@@ -348,7 +364,7 @@ function useToolDur(slot){var k='s'+slot;if(!toolDurability[k])return;toolDurabi
 function initToolDur(slot,id){var t=TOOL_TIER[id];if(t){var k='s'+slot;toolDurability[k]={cur:TIER_DUR[t],max:TIER_DUR[t]};}}
 
 var TIER_LEVEL={wood:1,stone:2,iron:3,diamond:4};
-var MINE_REQ={8:2,9:3,10:3};
+var MINE_REQ={3:1,7:1,8:2,9:3,10:3,12:1};
 function getToolTierLevel(id){var t=TOOL_TIER[id];return t?TIER_LEVEL[t]:0;}
 // === TOOL SPRITE RENDERER ===
 var spriteCache={};
@@ -366,6 +382,68 @@ else if(type=='sword'){g.fillRect(6,10,2,2);g.fillRect(8,8,2,2);g.fillStyle='#65
 else if(type=='axe'){g.fillRect(4,10,2,2);g.fillRect(6,8,2,2);g.fillRect(8,6,2,2);g.fillStyle=hc;g.fillRect(8,2,4,4);g.fillRect(10,4,4,2);g.fillRect(12,2,2,2);}
 else if(type=='shovel'){g.fillRect(6,6,2,2);g.fillRect(8,4,2,2);g.fillRect(4,10,2,2);g.fillRect(6,8,2,2);g.fillStyle=hc;g.fillRect(8,0,4,4);g.fillRect(10,2,2,4);}
 spriteCache[key]=oc;ctx2.drawImage(oc,x,y,w,h);}
+
+// === HUNGER & SURVIVAL MECHANICS ===
+function updateHunger(dt){
+if(gameMode=='creative')return;
+player.hungerTimer+=dt;
+if(player.hungerTimer>=80){player.hungerTimer=0;player.hunger=Math.max(0,player.hunger-1);}
+if(player.hunger<=0){player.hp=Math.max(0,player.hp-1);if(player.hp<=0)gameOver();}
+if(player.hunger>16&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+0.02);}
+}
+function toggleFly(){
+if(gameMode!='creative')return;
+player.flying=!player.flying;
+var fi=document.getElementById('fly-indicator');
+if(fi)fi.style.display=player.flying?'block':'none';
+}
+function applyFallDamage(){
+if(gameMode=='creative')return;
+if(player.onGround&&player.fallDist>3){
+var dmg=Math.floor(player.fallDist-3);
+player.hp=Math.max(0,player.hp-dmg);
+if(player.hp<=0)gameOver();
+}
+if(player.onGround)player.fallDist=0;
+else if(player.vy>0)player.fallDist+=player.vy/TILE;
+}
+
+
+var gameMsg='',gameMsgTimer=0;
+function showGameMsg(txt){gameMsg=txt;gameMsgTimer=90;}
+// === FURNACE SMELTING ===
+function openFurnace(){
+gameState='furnace';
+var fs=document.getElementById('furnace-screen');fs.style.display='flex';
+var sl=document.getElementById('smelt-list');sl.innerHTML='';
+var coal=countItem(114);
+var found=false;
+for(var i=0;i<36;i++){
+var s=inventory[i];if(s.id>0&&SMELT[s.id]){
+var outId=SMELT[s.id];
+var outName=INAMES[outId]||(BCOLORS[outId]?'Block '+outId:'Item '+outId);
+var inName=INAMES[s.id]||(BCOLORS[s.id]?'Block '+s.id:'Item '+s.id);
+var btn=document.createElement('div');btn.className='smelt-slot';
+btn.innerHTML=inName+' (x'+s.count+') &#10145; '+outName+(coal>0?' [Smelt]':' [No Fuel]');
+if(coal>0){btn.setAttribute('data-id',s.id);btn.onclick=function(){smeltItem(parseInt(this.getAttribute('data-id')));};}
+sl.appendChild(btn);found=true;
+}}
+if(!found){var msg=document.createElement('div');msg.className='smelt-slot';msg.textContent='No smeltable items';sl.appendChild(msg);}
+var fi=document.createElement('div');fi.className='fuel-info';fi.textContent='Coal: '+coal;sl.appendChild(fi);
+}
+function closeFurnace(){
+gameState='playing';
+document.getElementById('furnace-screen').style.display='none';
+}
+function smeltItem(id){
+if(countItem(114)<1)return;
+if(countItem(id)<1)return;
+if(!SMELT[id])return;
+removeItem(114,1);
+removeItem(id,1);
+addItem(SMELT[id],1);
+openFurnace();
+}
 // === RENDERING ===
 var zoomLevel=1.0,zoomPanelOpen=false;
 function toggleZoom(){zoomPanelOpen=!zoomPanelOpen;var p=document.getElementById('zoom-panel');if(zoomPanelOpen)p.classList.add('open');else p.classList.remove('open');}
@@ -439,6 +517,15 @@ ctx.fillStyle=p.color;ctx.fillRect(p.x-camX,p.y-camY,2,2);
 }
 // === HUD ===
 function renderHUD(){
+var hpBar=document.getElementById('health-bar');
+var hunBar=document.getElementById('hunger-bar');
+if(gameMode=='creative'){
+if(hpBar)hpBar.style.display='none';
+if(hunBar)hunBar.style.display='none';
+}else{
+if(hpBar){hpBar.style.display='block';hpBar.innerHTML='';for(var h=0;h<10;h++){hpBar.innerHTML+=(h<Math.ceil(player.hp/2))?'\u2764':'\u2661';}}
+if(hunBar){hunBar.style.display='block';hunBar.innerHTML='';for(var h=0;h<10;h++){hunBar.innerHTML+=(h<Math.ceil(player.hunger/2))?'\ud83c\udf56':'\u2022';}}
+}
 var hb=document.getElementById('inv-bar');hb.innerHTML='';
 for(var i=0;i<9;i++){
 var s=inventory[i];var div=document.createElement('div');div.className='inv-slot'+(i==player.selectedSlot?' selected':'');
@@ -499,6 +586,8 @@ showCrafting();
 // Keyboard
 document.addEventListener('keydown',function(e){
 if(gameState=='title')return;
+if(e.key=='f'||e.key=='F')toggleFly();
+if(e.key=='ArrowDown'||e.key=='s')keys.down=true;
 if(e.key=='ArrowLeft'||e.key=='a')keys.left=true;
 if(e.key=='ArrowRight'||e.key=='d')keys.right=true;
 if(e.key=='ArrowUp'||e.key=='w'||e.key==' ')keys.up=true;
@@ -508,7 +597,7 @@ if(e.key=='e')placeBlock();
 if(e.key=='f')attackEntity();
 if(e.key=='r')eatFood();
 if(e.key=='c'){if(gameState=='crafting')hideCrafting();else showCrafting();}
-if(e.key=='Escape'){if(gameState=='crafting')hideCrafting();}
+if(e.key=='Escape'){if(gameState=='crafting')hideCrafting();if(gameState=='furnace')closeFurnace();}
 if(e.key>='1'&&e.key<='9')player.selectedSlot=parseInt(e.key)-1;
 e.preventDefault();
 });
@@ -521,23 +610,26 @@ if(e.key=='ArrowDown'||e.key=='s')keys.down=false;
 // R1 Hardware: Scroll wheel
 window.addEventListener('scrollUp',function(){
 if(gameState=='crafting'){document.getElementById('craft-screen').scrollTop-=30;return;}
+if(gameState=='furnace'){document.getElementById('smelt-list').scrollTop-=30;return;}
 player.selectedSlot=(player.selectedSlot-1+9)%9;
 });
 window.addEventListener('scrollDown',function(){
 if(gameState=='crafting'){document.getElementById('craft-screen').scrollTop+=30;return;}
+if(gameState=='furnace'){document.getElementById('smelt-list').scrollTop+=30;return;}
 player.selectedSlot=(player.selectedSlot+1)%9;
 });
 // R1 Hardware: Side button
 window.addEventListener('sideClick',function(){
 if(gameState=='title'){startGame('survival');return;}
 if(gameState=='crafting'){hideCrafting();return;}
+if(gameState=='furnace'){closeFurnace();return;}
 if(gameState=='dead'){restartGame();return;}
 var bx=cursorX,by=cursorY;if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H){if(world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER&&world[bx][by]!=BLOCKS.BEDROCK){mineBlock();}else{placeBlock();}}
 });
 var sideHoldTimer=null;
 window.addEventListener('longPressStart',function(){
 sideHoldTimer=setTimeout(function(){
-if(gameState=='playing')showCrafting();
+if(gameState=='playing'){if(gameMode=='creative')toggleFly();else showCrafting();}
 },500);
 });
 window.addEventListener('longPressEnd',function(){
@@ -584,9 +676,11 @@ function resumeGame(){gameState='playing';document.getElementById('pause-menu').
 function gameLoop(now){
 dt=(now-lastTime)/16.67;if(dt>3)dt=3;lastTime=now;
 if(gameState=='playing'){
-updatePlayer(dt);updateDayNight();spawnEnemies();updateEntities(dt);
+updatePlayer(dt);updateHunger(dt);updateDayNight();spawnEnemies();updateEntities(dt);
 if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
 render();ctx.restore();renderHUD();
+if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
+
 }
 if(gameState=='dead'){
 ctx.fillStyle='rgba(200,0,0,0.3)';ctx.fillRect(0,0,W,H);
