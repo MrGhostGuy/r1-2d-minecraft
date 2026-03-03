@@ -50,6 +50,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #autolock-btn.off{background:rgba(180,0,0,0.7);border-color:#f00;}
 #autolock-status{position:absolute;top:54px;right:2px;width:60px;background:rgba(0,0,0,0.6);border-radius:3px;color:#0f0;font-size:7px;z-index:20;text-align:center;padding:1px;display:none;font-family:monospace;}
 #autolock-status.active{display:block;}
+
+#combat-btn{position:absolute;top:2px;right:28px;width:24px;height:24px;background:rgba(180,0,0,0.7);border:1px solid #f44;border-radius:4px;color:#fff;font-size:9px;font-weight:bold;cursor:pointer;z-index:20;display:none;text-align:center;line-height:24px;}
+#combat-btn.off{background:rgba(80,0,0,0.5);border-color:#800;}
+#enemy-warn{position:absolute;top:28px;right:2px;width:50px;background:rgba(200,0,0,0.8);color:#ff0;font-size:7px;text-align:center;border-radius:3px;display:none;z-index:20;padding:1px;animation:warnFlash 0.5s infinite;}
+@keyframes warnFlash{0%,100%{opacity:1;}50%{opacity:0.4;}}
 </style>
 </head>
 <body>
@@ -61,6 +66,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
     <div class="menu-btn" onclick="startGame('creative')"><b>Creative Mode</b><br><span style="font-size:6px;color:#aaa">Fly, Infinite Blocks, No Damage</span></div>
 </div>
 <canvas id="game" width="240" height="260"></canvas>
+<div id="combat-btn" onclick="toggleAutoCombat()">AC</div>
+<div id="enemy-warn">&#9888; ENEMY</div>
 <div id="autolock-btn" onclick="toggleAutoLock()" ontouchstart="event.stopPropagation()">AL</div>
 <div id="autolock-status"></div>
 
@@ -463,6 +470,16 @@ function getToolType(){var h=getHeldItem();if(!h||h.id<100)return 0;for(var i=0;
 function findAutoLockTarget(){if(!autoLockEnabled)return null;var tt=getToolType();if(tt==0)return null;var targets=tt==1?ORE_BLOCKS:WOOD_BLOCKS;var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);var best=null,bestScore=-1;for(var dx=-AUTO_LOCK_RANGE;dx<=AUTO_LOCK_RANGE;dx++){for(var dy=-AUTO_LOCK_RANGE;dy<=AUTO_LOCK_RANGE;dy++){var bx=px+dx,by=py+dy;if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)continue;var b=world[bx][by];var isTarget=false;for(var t=0;t<targets.length;t++)if(b==targets[t]){isTarget=true;break;}if(!isTarget)continue;var dist=Math.abs(dx)+Math.abs(dy);var priority=tt==1?(ORE_PRIORITY[b]||1):2;var score=priority*100-dist*10;if(score>bestScore){bestScore=score;best={x:bx,y:by,block:b,dist:dist};}}}return best;}
 function updateAutoLock(){if(!autoLockEnabled||gameState!='playing')return;autoLockPulse=(autoLockPulse+0.05)%6.28;if(autoLockTarget&&world[autoLockTarget.x]&&world[autoLockTarget.x][autoLockTarget.y]==0){autoLockTarget=null;miningProgress=0;}var newTarget=findAutoLockTarget();if(newTarget){autoLockTarget=newTarget;cursorX=newTarget.x;cursorY=newTarget.y;var st=document.getElementById('autolock-status');st.className='active';var bname='Block';if(newTarget.block==10)bname='DIAMOND';else if(newTarget.block==9)bname='GOLD';else if(newTarget.block==8)bname='IRON';else if(newTarget.block==7)bname='COAL';else if(newTarget.block==3)bname='STONE';else if(newTarget.block==12)bname='COBBLE';else if(newTarget.block==5)bname='WOOD';st.textContent=bname+' d:'+newTarget.dist;if(autoLockWalk&&newTarget.dist>MINE_RANGE){var tx=newTarget.x*TILE+TILE/2,ty=newTarget.y*TILE;if(player.x<tx-4)keys.left=false,keys.right=true;else if(player.x>tx+4)keys.left=true,keys.right=false;else keys.left=false,keys.right=false;}else if(autoLockWalk&&newTarget.dist<=MINE_RANGE){keys.left=false;keys.right=false;}}else{autoLockTarget=null;var st=document.getElementById('autolock-status');st.className='active';st.textContent='No target';}}
 function renderAutoLock(){if(!autoLockEnabled||!autoLockTarget||gameState!='playing')return;var t=autoLockTarget;var sx=t.x*TILE-camX,sy=t.y*TILE-camY;var pulse=Math.sin(autoLockPulse)*0.3+0.7;ctx.strokeStyle='rgba(0,255,0,'+pulse+')';ctx.lineWidth=2;ctx.strokeRect(sx-1,sy-1,TILE+2,TILE+2);ctx.strokeStyle='rgba(255,255,0,'+pulse*0.5+')';ctx.lineWidth=1;ctx.strokeRect(sx-3,sy-3,TILE+6,TILE+6);if(t.dist<=MINE_RANGE){ctx.fillStyle='rgba(0,255,0,0.15)';ctx.fillRect(sx,sy,TILE,TILE);}else{ctx.fillStyle='rgba(255,0,0,0.15)';ctx.fillRect(sx,sy,TILE,TILE);var mx=player.x-camX+3,my=player.y-camY-2;ctx.strokeStyle='rgba(255,255,0,0.4)';ctx.setLineDash([2,2]);ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(sx+TILE/2,sy+TILE/2);ctx.stroke();ctx.setLineDash([]);}if(miningProgress>0){var hard=HARDNESS[t.block]||1;var pct=miningProgress/hard;ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(sx,sy-4,TILE,3);ctx.fillStyle=pct>0.6?'#0f0':pct>0.3?'#ff0':'#f00';ctx.fillRect(sx,sy-4,TILE*pct,3);}}
+
+// === AUTO-COMBAT SYSTEM ===
+var autoCombatEnabled=true,autoCombatTarget=null,combatCooldown=0,combatPulse=0,dmgNumbers=[],swingAnim=0;
+var SWORD_IDS=[105,106,107,108],COMBAT_RANGE=16,APPROACH_RANGE=40,WARN_RANGE=60;
+var THREAT_MODE='closest';
+function toggleAutoCombat(){autoCombatEnabled=!autoCombatEnabled;var b=document.getElementById('combat-btn');if(b){b.textContent=autoCombatEnabled?'AC':'ac';if(!autoCombatEnabled)b.classList.add('off');else b.classList.remove('off');}if(!autoCombatEnabled)autoCombatTarget=null;}
+function hasSword(){var h=getHeldItem();return SWORD_IDS.indexOf(h.id)>=0;}
+function findCombatTarget(){if(entities.length==0)return null;var best=null,bestScore=Infinity;for(var i=0;i<entities.length;i++){var e=entities[i];if(e.hp<=0)continue;var dx=Math.abs(player.x-e.x),dy=Math.abs(player.y-e.y),dist=Math.sqrt(dx*dx+dy*dy);if(dist>APPROACH_RANGE*2)continue;var score=THREAT_MODE=='closest'?dist:(e.hp+dist*0.1);if(score<bestScore){bestScore=score;best=e;}}return best;}
+function updateAutoCombat(dt){combatPulse+=0.08;if(combatCooldown>0)combatCooldown-=dt;for(var i=dmgNumbers.length-1;i>=0;i--){dmgNumbers[i].t-=dt;dmgNumbers[i].y-=0.5;if(dmgNumbers[i].t<=0)dmgNumbers.splice(i,1);}var w=document.getElementById('enemy-warn');if(gameMode=='creative'||gameState!='playing'){if(w)w.style.display='none';autoCombatTarget=null;return;}var nearEnemy=false;for(var i=0;i<entities.length;i++){var dx=Math.abs(player.x-entities[i].x),dy=Math.abs(player.y-entities[i].y);if(Math.sqrt(dx*dx+dy*dy)<WARN_RANGE){nearEnemy=true;break;}}if(w)w.style.display=nearEnemy?'block':'none';if(!autoCombatEnabled||!hasSword()){autoCombatTarget=null;return;}autoCombatTarget=findCombatTarget();if(!autoCombatTarget||autoCombatTarget.hp<=0){autoCombatTarget=findCombatTarget();}if(!autoCombatTarget)return;var dx=autoCombatTarget.x-player.x,dy=autoCombatTarget.y-player.y,dist=Math.sqrt(dx*dx+dy*dy);player.dir=dx>0?1:-1;if(dist>COMBAT_RANGE&&dist<APPROACH_RANGE*2){if(dx>2)keys.right=true;else keys.right=false;if(dx<-2)keys.left=true;else keys.left=false;}else{keys.left=false;keys.right=false;}if(dist<=COMBAT_RANGE&&combatCooldown<=0){var held=getHeldItem();var dmg=SWORD_DMG[held.id]||1;autoCombatTarget.hp-=dmg;autoCombatTarget.vx=player.dir*3;autoCombatTarget.vy=-2;player.attacking=10;swingAnim=8;combatCooldown=12;if(held.id>=101&&held.id<=122)useToolDur(player.selectedSlot);dmgNumbers.push({x:autoCombatTarget.x,y:autoCombatTarget.y-8,val:dmg,t:20});if(autoCombatTarget.hp<=0){autoCombatTarget=null;}}}
+function renderAutoCombat(ctx,camX,camY){if(gameState!='playing')return;for(var i=0;i<dmgNumbers.length;i++){var d=dmgNumbers[i];var sx=d.x-camX,sy=d.y-camY;ctx.fillStyle='#ff0';ctx.font='bold 7px monospace';ctx.fillText('-'+d.val,sx,sy);}if(!autoCombatEnabled||!autoCombatTarget||autoCombatTarget.hp<=0)return;var e=autoCombatTarget,ex=e.x-camX,ey=e.y-camY;var p=Math.sin(combatPulse)*2;ctx.strokeStyle='#f44';ctx.lineWidth=1;ctx.strokeRect(ex-2+p,ey-2+p,e.w+4-p*2,e.h+4-p*2);ctx.strokeStyle='#ff0';ctx.setLineDash([2,2]);ctx.strokeRect(ex-3,ey-3,e.w+6,e.h+6);ctx.setLineDash([]);var bw=e.w+6,bh=3,bx=ex-3,by=ey-e.h-2;var hpRatio=e.hp/e.maxHp;ctx.fillStyle='#300';ctx.fillRect(bx,by,bw,bh);ctx.fillStyle=hpRatio>0.5?'#0f0':hpRatio>0.25?'#ff0':'#f00';ctx.fillRect(bx,by,bw*hpRatio,bh);ctx.strokeStyle='#fff';ctx.strokeRect(bx,by,bw,bh);ctx.fillStyle='#fff';ctx.font='5px monospace';ctx.fillText(e.type,bx,by-1);if(swingAnim>0){ctx.strokeStyle='rgba(255,255,100,'+swingAnim/8+')';ctx.beginPath();var sa=player.dir>0?-0.5:3.6;ctx.arc(player.x-camX+3,player.y-camY+4,10,sa,sa+1);ctx.stroke();swingAnim-=0.5;}}
 // === RENDERING ===
 var zoomLevel=1.0,zoomPanelOpen=false;
 function toggleZoom(){zoomPanelOpen=!zoomPanelOpen;var p=document.getElementById('zoom-panel');if(zoomPanelOpen)p.classList.add('open');else p.classList.remove('open');}
@@ -593,7 +610,7 @@ if(canCraft){(function(rec){div.onclick=function(){craftItem(rec);};})(rec);}
 rl.appendChild(div);
 }
 }
-function hideCrafting(){gameState='playing';document.getElementById('zoom-btn').style.display='block';document.getElementById('autolock-btn').style.display='block';document.getElementById('craft-screen').style.display='none';}
+function hideCrafting(){gameState='playing';document.getElementById('zoom-btn').style.display='block';document.getElementById('autolock-btn').style.display='block';document.getElementById('combat-btn').style.display='block';document.getElementById('craft-screen').style.display='none';}
 function craftItem(rec){
 for(var j=0;j<rec.inp.length;j++){if(countItem(rec.inp[j][0])<rec.inp[j][1])return;}
 for(var j=0;j<rec.inp.length;j++){removeItem(rec.inp[j][0],rec.inp[j][1]);}
