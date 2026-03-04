@@ -339,8 +339,9 @@ var ex=(player.x/TILE+((Math.random()>0.5?1:-1)*(15+Math.random()*10)));
 var ey=0;ex=Math.floor(ex);if(ex<0||ex>=WORLD_W)return;
 for(var y=0;y<WORLD_H;y++){if(isSolid(ex,y)){ey=(y-2)*TILE;break;}}
 if(ey<=0)return;
-var type=Math.random()>0.5?'zombie':'skeleton';
-entities.push({type:type,x:ex*TILE,y:ey,vx:0,vy:0,w:6,h:12,hp:type=='zombie'?20:12,maxHp:type=='zombie'?20:12,dir:1,atkTimer:0,color:type=='zombie'?'#0a0':'#ddd'});
+var r=Math.random();var type=r<0.33?'creeper':r<0.66?'zombie':'skeleton';
+var ehp=type=='zombie'?20:type=='creeper'?20:12;
+entities.push({type:type,x:ex*TILE,y:ey,vx:0,vy:0,w:6,h:12,hp:ehp,maxHp:ehp,dir:1,atkTimer:0,color:type=='zombie'?'#0a0':type=='creeper'?'#0f0':'#ddd',fuseTimer:0,fuseActive:false,fuseMax:90});
 }
 function updateEntities(dt){
 for(var i=entities.length-1;i>=0;i--){
@@ -348,7 +349,7 @@ var e=entities[i];
 // Move toward player
 var dx=player.x-e.x;
 e.dir=dx>0?1:-1;
-e.vx=e.dir*0.5;
+e.vx=e.dir*(e.type=='creeper'?0.4:0.5);
 e.vy+=0.3;if(e.vy>5)e.vy=5;
 // Jump if blocked
 var nx=e.x+e.vx;
@@ -361,15 +362,33 @@ e.x+=e.vx;e.y+=e.vy;
 var gty=Math.floor((e.y+e.h)/TILE);
 var gtx=Math.floor((e.x+e.w/2)/TILE);
 if(gtx>=0&&gtx<WORLD_W&&gty>=0&&gty<WORLD_H&&isSolid(gtx,gty)){e.y=gty*TILE-e.h;e.vy=0;}
-// Attack player
+// Creeper fuse logic
+if(e.type=='creeper'){
+var cdx=player.x-e.x,cdy=player.y-e.y;
+var cdist=Math.sqrt(cdx*cdx+cdy*cdy);
+if(cdist<CREEPER_RANGE&&gameMode=='survival'){
+e.fuseActive=true;e.fuseTimer+=1.5;
+e.vx=0;
+if(e.fuseTimer>=e.fuseMax){creeperExplode(e);entities.splice(i,1);continue;}
+}else if(cdist<CREEPER_WARN_RANGE&&gameMode=='survival'){
+e.fuseActive=true;e.fuseTimer+=0.5;
+if(e.fuseTimer>=e.fuseMax){creeperExplode(e);entities.splice(i,1);continue;}
+}else{
+e.fuseActive=false;
+if(e.fuseTimer>0)e.fuseTimer-=0.5;
+}
+}
+// Attack player (non-creeper)
+if(e.type!='creeper'){
 var adx=Math.abs(player.x-e.x),ady=Math.abs(player.y-e.y);
 if(adx<10&&ady<14&&gameMode=='survival'){
 e.atkTimer++;
 if(e.atkTimer>30){e.atkTimer=0;if(gameMode!='creative'){player.hp-=e.type=='zombie'?3:2;}if(player.hp<=0)gameOver();}
 }
+}
 // Remove if too far or dead
 if(e.hp<=0||Math.abs(e.x-player.x)>300*TILE){
-if(e.hp<=0){addItem(e.type=='zombie'?ITEMS.RAW_PORK:ITEMS.STICK,Math.floor(Math.random()*2)+1);}
+if(e.hp<=0){var loot=e.type=='zombie'?ITEMS.RAW_PORK:e.type=='creeper'?ITEMS.COAL:ITEMS.STICK;addItem(loot,Math.floor(Math.random()*2)+1);}
 entities.splice(i,1);
 }
 }
@@ -589,6 +608,31 @@ function isOnLadder(){
 var px=Math.floor((player.x+player.w/2)/TILE),py=Math.floor((player.y+player.h/2)/TILE);
 return px>=0&&px<WORLD_W&&py>=0&&py<WORLD_H&&world[px][py]==BLOCKS.LADDER;}
 
+// === CREEPER EXPLOSION ===
+var CREEPER_RANGE=24,CREEPER_WARN_RANGE=36;
+function creeperExplode(e){
+var cx=Math.floor(e.x/TILE),cy=Math.floor((e.y+e.h/2)/TILE);
+var rad=3;
+for(var bx=cx-rad;bx<=cx+rad;bx++){
+for(var by=cy-rad;by<=cy+rad;by++){
+if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)continue;
+var dx=bx-cx,dy=by-cy;
+if(dx*dx+dy*dy>rad*rad+1)continue;
+var b=world[bx][by];
+if(b==BLOCKS.BEDROCK||b==BLOCKS.AIR||b==BLOCKS.WATER)continue;
+world[bx][by]=BLOCKS.AIR;
+for(var p=0;p<2;p++)particles.push({x:bx*TILE+4,y:by*TILE+4,vx:(Math.random()-0.5)*3,vy:(Math.random()-0.5)*3,life:20+Math.random()*15,color:Math.random()>0.5?'#f80':'#ff0'});
+}}
+var pdx=player.x-e.x,pdy=player.y-e.y;
+var pdist=Math.sqrt(pdx*pdx+pdy*pdy);
+if(pdist<rad*TILE*1.5&&gameMode=='survival'){
+var dmg=Math.max(1,Math.floor(14*(1-pdist/(rad*TILE*1.5))));
+player.hp-=dmg;if(player.hp<=0)gameOver();
+player.vy=-3;player.vx=(pdx>0?1:-1)*2;
+}
+for(var p=0;p<15;p++)particles.push({x:e.x+3,y:e.y+6,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,life:25+Math.random()*20,color:['#f00','#f80','#ff0','#fff'][Math.floor(Math.random()*4)]});
+showGameMsg('BOOM!');
+}
 // === RENDERING ===
 var zoomLevel=1.0,zoomPanelOpen=false;
 function toggleZoom(){zoomPanelOpen=!zoomPanelOpen;var p=document.getElementById('zoom-panel');if(zoomPanelOpen)p.classList.add('open');else p.classList.remove('open');}
@@ -650,7 +694,25 @@ player.attacking--;
 // Entities
 for(var i=0;i<entities.length;i++){
 var e=entities[i];var ex=e.x-camX,ey=e.y-camY;
+if(e.type=='creeper'){
+var fp=e.fuseTimer/e.fuseMax;
+var flash=e.fuseActive&&Math.floor(e.fuseTimer/4)%2==0;
+var swell=1+fp*0.3;
+var sw=Math.floor(e.w*swell),sh=Math.floor(e.h*swell);
+var sox=ex-Math.floor((sw-e.w)/2),soy=ey-Math.floor((sh-e.h));
+ctx.fillStyle=flash?'#fff':'#0c0';ctx.fillRect(sox+1,soy,sw-2,4);
+ctx.fillStyle=flash?'#faa':'#080';ctx.fillRect(sox,soy+3,sw,sh-7);
+ctx.fillStyle='#060';ctx.fillRect(sox,soy+sh-4,2,4);ctx.fillRect(sox+sw-2,soy+sh-4,2,4);
+ctx.fillStyle='#000';ctx.fillRect(sox+1,soy+1,1,1);ctx.fillRect(sox+sw-3,soy+1,1,1);
+if(e.fuseActive){
+ctx.fillStyle='rgba(255,0,0,0.3)';ctx.fillRect(sox-2,soy-2,sw+4,sh+4);
+ctx.fillStyle='#ff0';ctx.font='6px monospace';ctx.fillText('Sss...',sox-2,soy-8);
+ctx.fillStyle='#f00';ctx.fillRect(ex,ey-5,e.w,2);
+ctx.fillStyle='#ff0';ctx.fillRect(ex,ey-5,Math.floor(e.w*fp),2);
+}
+}else{
 ctx.fillStyle=e.color;ctx.fillRect(ex,ey,e.w,e.h);
+}
 ctx.fillStyle='#f00';ctx.fillRect(ex,ey-3,e.w*(e.hp/e.maxHp),2);
 }
 // Particles
