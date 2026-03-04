@@ -55,7 +55,13 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #combat-btn.off{background:rgba(80,0,0,0.5);border-color:#800;}
 #enemy-warn{position:absolute;top:28px;right:2px;width:50px;background:rgba(200,0,0,0.8);color:#ff0;font-size:7px;text-align:center;border-radius:3px;display:none;z-index:20;padding:1px;animation:warnFlash 0.5s infinite;}
 @keyframes warnFlash{0%,100%{opacity:1;}50%{opacity:0.4;}}
-</style>
+
+#chest-screen{position:absolute;top:0;left:0;width:240px;height:260px;background:rgba(0,0,0,0.85);display:none;z-index:30;overflow-y:auto;padding:4px;}
+#chest-screen h3{color:#fff;font-size:10px;margin:2px 0;text-align:center;}
+.chest-slot{display:inline-block;width:22px;height:22px;border:1px solid #555;margin:1px;background:rgba(50,50,50,0.8);position:relative;cursor:pointer;}
+.chest-slot .block-icon{width:14px;height:14px;margin:3px auto;display:block;}
+.chest-slot .count{position:absolute;bottom:0;right:1px;color:#fff;font-size:7px;}
+    </style>
 </head>
 <body>
 <div id="title">
@@ -80,26 +86,32 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <div id="inv-bar"></div>
 <div id="craft-screen"><h3>Crafting</h3><div id="recipe-list"></div></div>
 <div id="furnace-screen"><h3>&#128293; Furnace</h3><div class="fuel-info">Fuel: 1 Coal per smelt</div><div id="smelt-list"></div><div class="close-btn" onclick="closeFurnace()">Close</div></div>
-<div id="pause-menu"><h3>PAUSED</h3><div class="menu-btn" onclick="resumeGame()">Resume</div></div>
+<div id="pause-menu"><h3>PAUSED</h3><div class="menu-btn" onclick="resumeGame()">Resume</div>
+<div id="chest-screen"><h3>Chest Storage</h3><div id="chest-slots"></div><h3>Your Inventory</h3><div id="chest-inv"></div></div>
 <script>
 // === GAME CONSTANTS ===
 var W=240,H=260,TILE=8,COLS=30,ROWS=32;
 var CHUNK_W=16,WORLD_W=256,WORLD_H=64,SEA=32;
-var BLOCKS={AIR:0,DIRT:1,GRASS:2,STONE:3,SAND:4,WOOD:5,LEAVES:6,COAL_ORE:7,IRON_ORE:8,GOLD_ORE:9,DIAMOND_ORE:10,PLANKS:11,COBBLE:12,BEDROCK:13,WATER:14,SNOW:15,GLASS:16,TORCH:17,FURNACE:18,CHEST:19,GRAVEL:20,CLAY:21,CACTUS:22};
-var ITEMS={STICK:100,WOOD_PICK:101,STONE_PICK:102,IRON_PICK:103,DIAMOND_PICK:104,WOOD_SWORD:105,STONE_SWORD:106,IRON_SWORD:107,DIAMOND_SWORD:108,WOOD_AXE:109,WOOD_SHOVEL:110,IRON_INGOT:111,GOLD_INGOT:112,DIAMOND:113,COAL:114,RAW_PORK:115,COOKED_PORK:116,STONE_AXE:117,IRON_AXE:118,DIAMOND_AXE:119,STONE_SHOVEL:120,IRON_SHOVEL:121,DIAMOND_SHOVEL:122};
+var BLOCKS={AIR:0,DIRT:1,GRASS:2,STONE:3,SAND:4,WOOD:5,LEAVES:6,COAL_ORE:7,IRON_ORE:8,GOLD_ORE:9,DIAMOND_ORE:10,PLANKS:11,COBBLE:12,BEDROCK:13,WATER:14,SNOW:15,GLASS:16,TORCH:17,FURNACE:18,CHEST:19,GRAVEL:20,CLAY:21,CACTUS:22,DOOR:23,LADDER:24,FARMLAND:25,WHEAT1:26,WHEAT2:27,WHEAT3:28};
+var ITEMS={STICK:100,WOOD_PICK:101,STONE_PICK:102,IRON_PICK:103,DIAMOND_PICK:104,WOOD_SWORD:105,STONE_SWORD:106,IRON_SWORD:107,DIAMOND_SWORD:108,WOOD_AXE:109,WOOD_SHOVEL:110,IRON_INGOT:111,GOLD_INGOT:112,DIAMOND:113,COAL:114,RAW_PORK:115,COOKED_PORK:116,STONE_AXE:117,IRON_AXE:118,DIAMOND_AXE:119,STONE_SHOVEL:120,IRON_SHOVEL:121,DIAMOND_SHOVEL:122,WHEAT_SEEDS:123,WHEAT_ITEM:124,BREAD:125,WOOD_HOE:126};
 var BCOLORS={};
 BCOLORS[0]='rgba(0,0,0,0)';BCOLORS[1]='#8B6914';BCOLORS[2]='#4a8f3f';BCOLORS[3]='#808080';BCOLORS[4]='#d2b48c';BCOLORS[5]='#8B5A2B';BCOLORS[6]='#228B22';BCOLORS[7]='#404040';BCOLORS[8]='#B87333';BCOLORS[9]='#FFD700';BCOLORS[10]='#00FFFF';BCOLORS[11]='#DEB887';BCOLORS[12]='#696969';BCOLORS[13]='#1a1a1a';BCOLORS[14]='rgba(30,100,200,0.6)';BCOLORS[15]='#F0F0F0';BCOLORS[16]='rgba(200,230,255,0.4)';BCOLORS[17]='#FFD700';BCOLORS[18]='#555';BCOLORS[19]='#8B4513';BCOLORS[20]='#9E9E9E';BCOLORS[21]='#B0A090';BCOLORS[22]='#006400';
+BCOLORS[23]='#8B4513';BCOLORS[24]='#C4A882';BCOLORS[25]='#6B3A1F';BCOLORS[26]='#2d8a2d';BCOLORS[27]='#4aa84a';BCOLORS[28]='#d4a017';
 var BNAMES={};
 BNAMES[0]='Air';BNAMES[1]='Dirt';BNAMES[2]='Grass';BNAMES[3]='Stone';BNAMES[4]='Sand';BNAMES[5]='Wood';BNAMES[6]='Leaves';BNAMES[7]='Coal Ore';BNAMES[8]='Iron Ore';BNAMES[9]='Gold Ore';BNAMES[10]='Diamond';BNAMES[11]='Planks';BNAMES[12]='Cobble';BNAMES[13]='Bedrock';BNAMES[14]='Water';BNAMES[15]='Snow';BNAMES[16]='Glass';BNAMES[17]='Torch';BNAMES[18]='Furnace';BNAMES[19]='Chest';BNAMES[20]='Gravel';BNAMES[21]='Clay';BNAMES[22]='Cactus';
 var HARDNESS={};
 HARDNESS[1]=1;HARDNESS[2]=1;HARDNESS[3]=3;HARDNESS[4]=1;HARDNESS[5]=2;HARDNESS[6]=0.5;HARDNESS[7]=4;HARDNESS[8]=4;HARDNESS[9]=5;HARDNESS[10]=6;HARDNESS[11]=1.5;HARDNESS[12]=2;HARDNESS[13]=999;HARDNESS[14]=999;HARDNESS[15]=0.5;HARDNESS[16]=1;HARDNESS[17]=0;HARDNESS[18]=3;HARDNESS[19]=2;HARDNESS[20]=1;HARDNESS[21]=1;HARDNESS[22]=0.5;
+HARDNESS[23]=2;HARDNESS[24]=1;HARDNESS[25]=0.5;HARDNESS[26]=0;HARDNESS[27]=0;HARDNESS[28]=0;
 var DROPS={};
 DROPS[2]=1;DROPS[3]=12;DROPS[5]=5;DROPS[6]=0;DROPS[7]=114;DROPS[8]=8;DROPS[9]=9;DROPS[10]=113;DROPS[15]=15;DROPS[16]=0;DROPS[17]=17;DROPS[18]=18;DROPS[22]=22;
+DROPS[23]=23;DROPS[24]=24;DROPS[25]=1;DROPS[26]=123;DROPS[27]=123;DROPS[28]=124;
 var ICOLORS={};
 ICOLORS[100]='#8B5A2B';ICOLORS[101]='#DEB887';ICOLORS[102]='#696969';ICOLORS[103]='#B87333';ICOLORS[104]='#00FFFF';ICOLORS[105]='#DEB887';ICOLORS[106]='#696969';ICOLORS[107]='#B87333';ICOLORS[108]='#00FFFF';ICOLORS[109]='#DEB887';ICOLORS[110]='#DEB887';ICOLORS[111]='#C0C0C0';ICOLORS[112]='#FFD700';ICOLORS[113]='#00FFFF';ICOLORS[114]='#333';ICOLORS[115]='#FF8080';ICOLORS[116]='#CC5533';
+ICOLORS[123]='#2d5a1e';ICOLORS[124]='#d4a017';ICOLORS[125]='#c8a060';ICOLORS[126]='#DEB887';
 ICOLORS[117]='#696969';ICOLORS[118]='#B87333';ICOLORS[119]='#00FFFF';ICOLORS[120]='#696969';ICOLORS[121]='#B87333';ICOLORS[122]='#00FFFF';
 var INAMES={};
 INAMES[100]='Stick';INAMES[101]='Wood Pick';INAMES[102]='Stone Pick';INAMES[103]='Iron Pick';INAMES[104]='Dia Pick';INAMES[105]='Wood Sword';INAMES[106]='Stone Sword';INAMES[107]='Iron Sword';INAMES[108]='Dia Sword';INAMES[109]='Wood Axe';INAMES[110]='Wood Shovel';INAMES[111]='Iron Ingot';INAMES[112]='Gold Ingot';INAMES[113]='Diamond';INAMES[114]='Coal';INAMES[115]='Raw Pork';INAMES[116]='Cooked Pork';
+INAMES[123]='Seeds';INAMES[124]='Wheat';INAMES[125]='Bread';INAMES[126]='Wood Hoe';
 INAMES[117]='Stone Axe';INAMES[118]='Iron Axe';INAMES[119]='Diamond Axe';INAMES[120]='Stone Shovel';INAMES[121]='Iron Shovel';INAMES[122]='Diamond Shovel';
 var TOOL_POWER={};
 TOOL_POWER[101]=2;TOOL_POWER[102]=4;TOOL_POWER[103]=6;TOOL_POWER[104]=8;TOOL_POWER[109]=3;TOOL_POWER[110]=2;
@@ -108,6 +120,7 @@ var SWORD_DMG={};
 SWORD_DMG[105]=4;SWORD_DMG[106]=5;SWORD_DMG[107]=6;SWORD_DMG[108]=8;
 var FOOD_HEAL={};
 FOOD_HEAL[115]=1;FOOD_HEAL[116]=3;
+FOOD_HEAL[125]=5;
 // === CRAFTING RECIPES ===
 var RECIPES=[
 {inp:[[5,1]],out:11,cnt:4,name:'Planks'},
@@ -124,6 +137,10 @@ var RECIPES=[
 {inp:[[11,1],[100,2]],out:110,cnt:1,name:'Wood Shovel'},
 {inp:[[12,3],[100,2]],out:117,cnt:1,name:'Stone Axe'},{inp:[[111,3],[100,2]],out:118,cnt:1,name:'Iron Axe'},{inp:[[113,3],[100,2]],out:119,cnt:1,name:'Diamond Axe'},{inp:[[12,1],[100,2]],out:120,cnt:1,name:'Stone Shovel'},{inp:[[111,1],[100,2]],out:121,cnt:1,name:'Iron Shovel'},{inp:[[113,1],[100,2]],out:122,cnt:1,name:'Diamond Shovel'},
 {inp:[[12,8]],out:18,cnt:1,name:'Furnace'},
+{inp:[[124,3]],out:125,cnt:1,name:'Bread'},
+{inp:[[100,2],[11,2]],out:126,cnt:1,name:'Wood Hoe'},
+{inp:[[11,6]],out:23,cnt:3,name:'Door'},
+{inp:[[100,7]],out:24,cnt:3,name:'Ladder'},
 {inp:[[11,8]],out:19,cnt:1,name:'Chest'},
 {inp:[[114,1],[100,1]],out:17,cnt:4,name:'Torch'},
 {inp:[[4,4]],out:16,cnt:4,name:'Glass'}
@@ -175,6 +192,17 @@ else if(y>h+2&&oreN<0.09)world[x][y]=BLOCKS.COAL_ORE;
 else if(oreN<0.04)world[x][y]=BLOCKS.GRAVEL;
 }else{world[x][y]=BLOCKS.BEDROCK;}
 }
+// Caves - carve tunnels through underground
+for(var ci=0;ci<8;ci++){
+var cx=Math.floor(Math.random()*WORLD_W),cy=Math.floor(SEA+8+Math.random()*20);
+var cdir=Math.random()*Math.PI*2,clen=10+Math.floor(Math.random()*30);
+for(var cs=0;cs<clen;cs++){
+var bx=Math.floor(cx),by=Math.floor(cy);
+for(var dx=-1;dx<=1;dx++){for(var dy=-1;dy<=1;dy++){
+var nx=bx+dx,ny=by+dy;
+if(nx>=0&&nx<WORLD_W&&ny>=0&&ny<WORLD_H&&world[nx][ny]!=BLOCKS.BEDROCK&&world[nx][ny]!=BLOCKS.WATER)
+world[nx][ny]=BLOCKS.AIR;}}
+cx+=Math.cos(cdir)*1.5;cy+=Math.sin(cdir)*0.8;cdir+=Math.random()*0.6-0.3;}}
 // Trees
 if((biome==0||biome==1||biome==3)&&Math.random()<0.08&&x>2&&x<WORLD_W-2){
 var th=Math.floor(Math.random()*3)+4;
@@ -205,9 +233,10 @@ for(var y=0;y<WORLD_H;y++){if(world[Math.floor(player.x/TILE)][y]!=BLOCKS.AIR&&w
 }
 function getBiome(x,seed){var b=octaveNoise((x+seed)*0.005,2);if(b<-0.3)return 2;if(b<0)return 0;if(b<0.3)return 1;if(b<0.6)return 3;return 4;}
 // === PLAYER PHYSICS ===
-function isSolid(x,y){if(x<0||x>=WORLD_W||y<0||y>=WORLD_H)return true;var b=world[x][y];return b!=BLOCKS.AIR&&b!=BLOCKS.WATER&&b!=BLOCKS.TORCH;}
+function isSolid(x,y){if(x<0||x>=WORLD_W||y<0||y>=WORLD_H)return true;var b=world[x][y];return b!=BLOCKS.AIR&&b!=BLOCKS.WATER&&b!=BLOCKS.TORCH&&b!=BLOCKS.DOOR&&b!=BLOCKS.LADDER&&b!=BLOCKS.WHEAT1&&b!=BLOCKS.WHEAT2&&b!=BLOCKS.WHEAT3;}
 function updatePlayer(dt){
 var spd=1.2,grav=0.3,jumpF=-4.5,maxFall=5;
+if(isOnLadder()){grav=0.05;maxFall=1;if(keys.up)player.vy=-1.5;if(keys.down)player.vy=1;}
 if(player.flying){grav=0;player.vy=0;if(keys.up)player.vy=-2;if(keys.down)player.vy=2;}
 applyFallDamage();
 if(keys.left){player.vx=-spd;player.dir=-1;}
@@ -260,6 +289,7 @@ function mineBlock(){
 var bx=cursorX,by=cursorY;
 if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)return;
 var b=world[bx][by];if(b==BLOCKS.FURNACE){openFurnace();return;}
+if(b==BLOCKS.CHEST){openChest(bx,by);return;}
 if(b==BLOCKS.AIR||b==BLOCKS.WATER||b==BLOCKS.BEDROCK)return;
 var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);
 var dist=Math.abs(bx-px)+Math.abs(by-py);if(dist>5)return;
@@ -271,7 +301,7 @@ if(gameMode=="creative"){miningProgress=hard;}else{miningProgress+=power*0.05;}
 if(miningProgress>=hard){
 miningProgress=0;
 if(held.id>=101&&held.id<=122)useToolDur(player.selectedSlot);
-var drop=DROPS[b]!==undefined?DROPS[b]:b;
+var drop=DROPS[b]!==undefined?DROPS[b]:b;if(b==BLOCKS.LEAVES&&Math.random()<0.1)drop=123;
 if(drop!=0)addItem(drop,1);
 world[bx][by]=BLOCKS.AIR;
 // Particles
@@ -480,6 +510,85 @@ function hasSword(){var h=getHeldItem();return SWORD_IDS.indexOf(h.id)>=0;}
 function findCombatTarget(){if(entities.length==0)return null;var best=null,bestScore=Infinity;for(var i=0;i<entities.length;i++){var e=entities[i];if(e.hp<=0)continue;var dx=Math.abs(player.x-e.x),dy=Math.abs(player.y-e.y),dist=Math.sqrt(dx*dx+dy*dy);if(dist>APPROACH_RANGE*2)continue;var score=THREAT_MODE=='closest'?dist:(e.hp+dist*0.1);if(score<bestScore){bestScore=score;best=e;}}return best;}
 function updateAutoCombat(dt){combatPulse+=0.08;if(combatCooldown>0)combatCooldown-=dt;for(var i=dmgNumbers.length-1;i>=0;i--){dmgNumbers[i].t-=dt;dmgNumbers[i].y-=0.5;if(dmgNumbers[i].t<=0)dmgNumbers.splice(i,1);}var w=document.getElementById('enemy-warn');if(gameMode=='creative'||gameState!='playing'){if(w)w.style.display='none';autoCombatTarget=null;return;}var nearEnemy=false;for(var i=0;i<entities.length;i++){var dx=Math.abs(player.x-entities[i].x),dy=Math.abs(player.y-entities[i].y);if(Math.sqrt(dx*dx+dy*dy)<WARN_RANGE){nearEnemy=true;break;}}if(w)w.style.display=nearEnemy?'block':'none';if(!autoCombatEnabled||!hasSword()){autoCombatTarget=null;return;}autoCombatTarget=findCombatTarget();if(!autoCombatTarget||autoCombatTarget.hp<=0){autoCombatTarget=findCombatTarget();}if(!autoCombatTarget)return;var dx=autoCombatTarget.x-player.x,dy=autoCombatTarget.y-player.y,dist=Math.sqrt(dx*dx+dy*dy);player.dir=dx>0?1:-1;if(dist>COMBAT_RANGE&&dist<APPROACH_RANGE*2){if(dx>2)keys.right=true;else keys.right=false;if(dx<-2)keys.left=true;else keys.left=false;}else{keys.left=false;keys.right=false;}if(dist<=COMBAT_RANGE&&combatCooldown<=0){var held=getHeldItem();var dmg=SWORD_DMG[held.id]||1;autoCombatTarget.hp-=dmg;autoCombatTarget.vx=player.dir*3;autoCombatTarget.vy=-2;player.attacking=10;swingAnim=8;combatCooldown=12;if(held.id>=101&&held.id<=122)useToolDur(player.selectedSlot);dmgNumbers.push({x:autoCombatTarget.x,y:autoCombatTarget.y-8,val:dmg,t:20});if(autoCombatTarget.hp<=0){autoCombatTarget=null;}}}
 function renderAutoCombat(ctx,camX,camY){if(gameState!='playing')return;for(var i=0;i<dmgNumbers.length;i++){var d=dmgNumbers[i];var sx=d.x-camX,sy=d.y-camY;ctx.fillStyle='#ff0';ctx.font='bold 7px monospace';ctx.fillText('-'+d.val,sx,sy);}if(!autoCombatEnabled||!autoCombatTarget||autoCombatTarget.hp<=0)return;var e=autoCombatTarget,ex=e.x-camX,ey=e.y-camY;var p=Math.sin(combatPulse)*2;ctx.strokeStyle='#f44';ctx.lineWidth=1;ctx.strokeRect(ex-2+p,ey-2+p,e.w+4-p*2,e.h+4-p*2);ctx.strokeStyle='#ff0';ctx.setLineDash([2,2]);ctx.strokeRect(ex-3,ey-3,e.w+6,e.h+6);ctx.setLineDash([]);var bw=e.w+6,bh=3,bx=ex-3,by=ey-e.h-2;var hpRatio=e.hp/e.maxHp;ctx.fillStyle='#300';ctx.fillRect(bx,by,bw,bh);ctx.fillStyle=hpRatio>0.5?'#0f0':hpRatio>0.25?'#ff0':'#f00';ctx.fillRect(bx,by,bw*hpRatio,bh);ctx.strokeStyle='#fff';ctx.strokeRect(bx,by,bw,bh);ctx.fillStyle='#fff';ctx.font='5px monospace';ctx.fillText(e.type,bx,by-1);if(swingAnim>0){ctx.strokeStyle='rgba(255,255,100,'+swingAnim/8+')';ctx.beginPath();var sa=player.dir>0?-0.5:3.6;ctx.arc(player.x-camX+3,player.y-camY+4,10,sa,sa+1);ctx.stroke();swingAnim-=0.5;}}
+
+// === CHEST STORAGE ===
+var chestData={};
+function getChestKey(x,y){return x+','+y;}
+function openChest(bx,by){
+var key=getChestKey(bx,by);
+if(!chestData[key])chestData[key]=[];
+for(var i=chestData[key].length;i<27;i++)chestData[key].push({id:0,count:0});
+gameState='chest';currentChest=key;
+var cs=document.getElementById('chest-screen');cs.style.display='block';
+renderChestUI();
+}
+function closeChest(){gameState='playing';document.getElementById('chest-screen').style.display='none';}
+var currentChest=null;
+function renderChestUI(){
+var key=currentChest;if(!key)return;
+var cs=document.getElementById('chest-slots');cs.innerHTML='';
+var chest=chestData[key];
+for(var i=0;i<27;i++){var s=chest[i];var div=document.createElement('div');div.className='chest-slot';
+div.setAttribute('data-idx',i);div.setAttribute('data-src','chest');
+if(s.id>0){var icon=document.createElement('div');icon.className='block-icon';
+icon.style.background=s.id<100?BCOLORS[s.id]:(ICOLORS[s.id]||'#fff');
+div.appendChild(icon);if(s.count>1){var cnt=document.createElement('span');cnt.className='count';cnt.textContent=s.count;div.appendChild(cnt);}}
+div.onclick=function(){var idx=parseInt(this.getAttribute('data-idx'));chestTransfer('chest',idx);};
+cs.appendChild(div);}
+var ci=document.getElementById('chest-inv');ci.innerHTML='';
+for(var i=0;i<9;i++){var s=inventory[i];var div=document.createElement('div');div.className='chest-slot';
+div.setAttribute('data-idx',i);
+if(s.id>0){var icon=document.createElement('div');icon.className='block-icon';
+icon.style.background=s.id<100?BCOLORS[s.id]:(ICOLORS[s.id]||'#fff');
+div.appendChild(icon);if(s.count>1){var cnt=document.createElement('span');cnt.className='count';cnt.textContent=s.count;div.appendChild(cnt);}}
+div.onclick=function(){var idx=parseInt(this.getAttribute('data-idx'));chestTransfer('inv',idx);};
+ci.appendChild(div);}
+}
+function chestTransfer(src,idx){
+var key=currentChest;if(!key)return;
+var chest=chestData[key];
+if(src=='chest'){var s=chest[idx];if(s.id==0)return;if(addItem(s.id,s.count)){s.id=0;s.count=0;}}
+else{var s=inventory[idx];if(s.id==0)return;
+for(var i=0;i<27;i++){if(chest[i].id==s.id&&chest[i].count<64){var add=Math.min(s.count,64-chest[i].count);chest[i].count+=add;s.count-=add;if(s.count<=0){s.id=0;s.count=0;}break;}}
+if(s.count>0){for(var i=0;i<27;i++){if(chest[i].id==0){chest[i].id=s.id;chest[i].count=s.count;s.id=0;s.count=0;break;}}}}
+renderChestUI();}
+// === SAND/GRAVEL GRAVITY ===
+function updateBlockPhysics(){
+for(var x=0;x<WORLD_W;x++){for(var y=WORLD_H-2;y>=0;y--){
+var b=world[x][y];
+if((b==BLOCKS.SAND||b==BLOCKS.GRAVEL)&&world[x][y+1]==BLOCKS.AIR){
+world[x][y+1]=b;world[x][y]=BLOCKS.AIR;}
+}}}
+// === WATER FLOW ===
+var waterTimer=0;
+function updateWaterFlow(dt){
+waterTimer+=dt;if(waterTimer<30)return;waterTimer=0;
+for(var x=0;x<WORLD_W;x++){for(var y=0;y<WORLD_H-1;y++){
+if(world[x][y]==BLOCKS.WATER){
+if(world[x][y+1]==BLOCKS.AIR)world[x][y+1]=BLOCKS.WATER;
+if(x>0&&world[x-1][y]==BLOCKS.AIR&&world[x][y+1]!=BLOCKS.AIR)world[x-1][y]=BLOCKS.WATER;
+if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.AIR&&world[x][y+1]!=BLOCKS.AIR)world[x+1][y]=BLOCKS.WATER;
+}}}}
+// === FARMING ===
+var cropTimer=0;
+function updateCrops(dt){
+cropTimer+=dt;if(cropTimer<120)return;cropTimer=0;
+for(var x=0;x<WORLD_W;x++){for(var y=0;y<WORLD_H;y++){
+var b=world[x][y];
+if(b==BLOCKS.WHEAT1&&Math.random()<0.3)world[x][y]=BLOCKS.WHEAT2;
+else if(b==BLOCKS.WHEAT2&&Math.random()<0.2)world[x][y]=BLOCKS.WHEAT3;
+}}}
+function useHoe(bx,by){
+if(by+1<WORLD_H&&(world[bx][by+1]==BLOCKS.DIRT||world[bx][by+1]==BLOCKS.GRASS)&&world[bx][by]==BLOCKS.AIR){
+world[bx][by+1]=BLOCKS.FARMLAND;return true;}return false;}
+function plantSeed(bx,by){
+if(world[bx][by]==BLOCKS.AIR&&by+1<WORLD_H&&world[bx][by+1]==BLOCKS.FARMLAND){
+world[bx][by]=BLOCKS.WHEAT1;return true;}return false;}
+// === LADDER CLIMBING ===
+function isOnLadder(){
+var px=Math.floor((player.x+player.w/2)/TILE),py=Math.floor((player.y+player.h/2)/TILE);
+return px>=0&&px<WORLD_W&&py>=0&&py<WORLD_H&&world[px][py]==BLOCKS.LADDER;}
+
 // === RENDERING ===
 var zoomLevel=1.0,zoomPanelOpen=false;
 function toggleZoom(){zoomPanelOpen=!zoomPanelOpen;var p=document.getElementById('zoom-panel');if(zoomPanelOpen)p.classList.add('open');else p.classList.remove('open');}
@@ -633,7 +742,7 @@ if(e.key=='e')placeBlock();
 if(e.key=='f')attackEntity();
 if(e.key=='r')eatFood();
 if(e.key=='c'){if(gameState=='crafting')hideCrafting();else showCrafting();}
-if(e.key=='Escape'){if(gameState=='crafting')hideCrafting();if(gameState=='furnace')closeFurnace();}
+if(e.key=='Escape'){if(gameState=='crafting')hideCrafting();if(gameState=='furnace')closeFurnace();if(gameState=='chest')closeChest();}
 if(e.key>='1'&&e.key<='9')player.selectedSlot=parseInt(e.key)-1;
 e.preventDefault();
 });
@@ -659,8 +768,9 @@ window.addEventListener('sideClick',function(){
 if(gameState=='title'){startGame('survival');return;}
 if(gameState=='crafting'){hideCrafting();return;}
 if(gameState=='furnace'){closeFurnace();return;}
+if(gameState=='chest'){closeChest();return;}
 if(gameState=='dead'){restartGame();return;}
-var bx=cursorX,by=cursorY;if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H){if(world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER&&world[bx][by]!=BLOCKS.BEDROCK){mineBlock();}else{placeBlock();}}
+var bx=cursorX,by=cursorY;if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H){if(world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER&&world[bx][by]!=BLOCKS.BEDROCK){mineBlock();}else{var hi=getHeldItem();if(hi.id==126){useHoe(cursorX,cursorY);}else if(hi.id==123&&plantSeed(cursorX,cursorY)){if(gameMode!='creative'){hi.count--;if(hi.count<=0){hi.id=0;hi.count=0;}}}else{placeBlock();}}}
 });
 var sideHoldTimer=null;
 window.addEventListener('longPressStart',function(){
@@ -695,7 +805,7 @@ canvas=document.getElementById('game');ctx=canvas.getContext('2d');
 
 
 generateWorld();
-if(mode=='creative'){for(var b=1;b<=22;b++)if(b!=14&&b!=13)addItem(b,64);}
+if(mode=='creative'){for(var b=1;b<=28;b++)if(b!=14&&b!=13)addItem(b,64);}
 else{addItem(BLOCKS.WOOD,10);addItem(BLOCKS.PLANKS,5);}
 lastTime=performance.now();
 requestAnimationFrame(gameLoop);
@@ -705,14 +815,14 @@ gameState='playing';player.hp=player.maxHp;
 entities=[];particles=[];miningProgress=0;
 inventory=[];for(var i=0;i<36;i++)inventory.push({id:0,count:0});
 generateWorld();
-if(gameMode=='creative'){for(var b=1;b<=22;b++)if(b!=14&&b!=13)addItem(b,64);}
+if(gameMode=='creative'){for(var b=1;b<=28;b++)if(b!=14&&b!=13)addItem(b,64);}
 else{addItem(BLOCKS.WOOD,10);addItem(BLOCKS.PLANKS,5);}
 }
 function resumeGame(){gameState='playing';document.getElementById('pause-menu').style.display='none';}
 function gameLoop(now){
 dt=(now-lastTime)/16.67;if(dt>3)dt=3;lastTime=now;
 if(gameState=='playing'){
-updatePlayer(dt);updateHunger(dt);updateDayNight();spawnEnemies();updateEntities(dt);
+updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updateCrops(dt);updateDayNight();spawnEnemies();updateEntities(dt);
 if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
 render();renderAutoLock();ctx.restore();renderHUD();
 if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
