@@ -12,7 +12,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #title h1{font-size:14px;color:#5c3;text-shadow:1px 1px #000;margin-bottom:8px;}
 #title h2{font-size:9px;color:#fff;margin-bottom:4px;}
 #title .credit{font-size:7px;color:#fd0;margin-bottom:12px;}
-#title .menu-btn{background:#555;color:#fff;border:1px solid #888;padding:4px 12px;font-size:9px;margin:3px;cursor:pointer;font-family:monospace;}
+#title .menu-btn{background:#555;color:#fff;border:1px solid #888;padding:8px 12px;font-size:9px;margin:4px;cursor:pointer;font-family:monospace;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,0.3);user-select:none;-webkit-user-select:none;}
 #title .menu-btn:hover{background:#777;}
 #hud{position:absolute;top:0;left:0;width:240px;pointer-events:none;z-index:10;}
 #inv-bar{position:absolute;bottom:0;left:0;width:240px;height:22px;background:rgba(0,0,0,0.7);display:flex;z-index:10;}
@@ -79,6 +79,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 .save-menu-btn.cancel{background:#a00;}
 .save-menu-btn.cancel:hover{background:#c00;}
 .save-menu-btn.delete{background:#a00;font-size:6px;padding:2px 6px;}
+.save-slot{touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,0.3);user-select:none;-webkit-user-select:none;cursor:pointer;padding:6px 4px;}
 #save-btn-hud{position:absolute;top:2px;right:2px;z-index:50;background:rgba(0,150,0,0.7);color:#fff;border:none;padding:2px 4px;font-size:6px;cursor:pointer;border-radius:2px;}
 #save-btn-hud:hover{background:rgba(0,200,0,0.9);}
 </style>
@@ -88,9 +89,9 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <h1>2D MINECRAFT</h1>
 <h2>Rabbit R1 Edition</h2>
 <div class="credit">Created by Jeff Hollaway [GhostLegacyX]</div>
-<div class="menu-btn" onclick="startGame('survival')"><b>Survival Mode</b><br><span style="font-size:6px;color:#aaa">Health, Mobs, Crafting</span></div>
-    <div class="menu-btn" onclick="startGame('creative')"><b>Creative Mode</b><br><span style="font-size:6px;color:#aaa">Fly, Infinite Blocks, No Damage</span></div>
-<div class="menu-btn" onclick="openLoadScreenFromTitle()">Load Game</div></div>
+<div class="menu-btn" onclick="startGame('survival')" ontouchend="event.preventDefault();startGame('survival')"><b>Survival Mode</b><br><span style="font-size:6px;color:#aaa">Health, Mobs, Crafting</span></div>
+    <div class="menu-btn" onclick="startGame('creative')" ontouchend="event.preventDefault();startGame('creative')"><b>Creative Mode</b><br><span style="font-size:6px;color:#aaa">Fly, Infinite Blocks, No Damage</span></div>
+<div class="menu-btn" onclick="openLoadScreenFromTitle()" ontouchend="event.preventDefault();openLoadScreenFromTitle()">Load Game</div></div>
 <canvas id="game" width="240" height="260"></canvas>
 <div id="combat-btn" onclick="toggleAutoCombat()">AC</div>
 <div id="enemy-warn">&#9888; ENEMY</div>
@@ -1022,7 +1023,7 @@ for(var i=0;i<keys.length;i++){(function(k){var s=saves[k];
 var d=new Date(s.timestamp||0);var ds=d.toLocaleDateString()+' '+d.toLocaleTimeString();
 var div=document.createElement('div');div.className='save-slot';
 div.innerHTML='<span class="slot-name">'+k+'</span><span class="slot-delete" onclick="event.stopPropagation();confirmDeleteSave(\''+k+'\')">X</span><br><span class="slot-info">'+s.gameMode+' | HP:'+Math.round(s.player.hp)+'/'+s.player.maxHp+' | '+ds+'</span>';
-div.onclick=function(){doLoadGame(k);};
+div.onclick=function(){doLoadGame(k);};div.ontouchend=function(e){e.preventDefault();doLoadGame(k);};
 list.appendChild(div);})(keys[i]);}
 }
 function confirmDeleteSave(name){if(confirm('Delete save: '+name+'?')){deleteSave(name);renderLoadSlots();}}
@@ -1042,7 +1043,7 @@ showGameMsg('Loaded: '+name);
 
 </script>
 <div id="save-screen"><h3>SAVE GAME</h3><input type="text" id="save-name-input" placeholder="Enter save name..." maxlength="20"><div id="save-slots-list"></div><button class="save-menu-btn" onclick="doSaveGame()">Save</button><button class="save-menu-btn cancel" onclick="closeSaveScreen()">Cancel</button></div>
-<div id="load-screen"><h3>LOAD GAME</h3><div id="load-slots-list"></div><button class="save-menu-btn cancel" onclick="closeLoadScreen()">Back</button></div>
+<div id="load-screen"><h3>LOAD GAME</h3><div id="load-slots-list"></div><button class="save-menu-btn cancel" onclick="closeLoadScreen()" ontouchend="event.preventDefault();closeLoadScreen()">Back</button></div>
 <button id="save-btn-hud" onclick="openSaveScreen()" style="display:none;">SAVE</button>
 </body>
 </html>
