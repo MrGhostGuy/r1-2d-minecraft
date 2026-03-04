@@ -21,7 +21,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 .inv-slot .count{font-size:6px;color:#fff;position:absolute;bottom:0;right:1px;}
 .inv-slot .block-icon{width:14px;height:14px;}
 #craft-screen{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.85);z-index:50;display:none;color:#fff;font-size:8px;overflow-y:auto;}
-#craft-screen h3{text-align:center;padding:4px;font-size:10px;color:#5c3;}
+#craft-screen h3{text-align:center;padding:4px;font-size:10px;color:#5c3;position:relative;}
 .recipe{display:flex;align-items:center;padding:2px 4px;border-bottom:1px solid #333;cursor:pointer;}
 .recipe:hover{background:rgba(255,255,255,0.1);}
 .recipe .r-name{flex:1;font-size:7px;}
@@ -61,7 +61,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 .chest-slot{display:inline-block;width:22px;height:22px;border:1px solid #555;margin:1px;background:rgba(50,50,50,0.8);position:relative;cursor:pointer;}
 .chest-slot .block-icon{width:14px;height:14px;margin:3px auto;display:block;}
 .chest-slot .count{position:absolute;bottom:0;right:1px;color:#fff;font-size:7px;}
-    </style>
+    #craft-btn{position:absolute;bottom:28px;left:2px;width:28px;height:28px;background:rgba(60,120,40,0.85);border:2px solid #5c3;border-radius:6px;color:#fff;font-size:9px;font-weight:bold;cursor:pointer;z-index:20;display:none;text-align:center;line-height:28px;touch-action:manipulation;}
+#craft-btn:active{background:rgba(100,180,60,0.9);}
+#craft-close-btn{position:absolute;top:2px;right:4px;width:22px;height:22px;background:rgba(200,30,30,0.9);border:1px solid #f44;border-radius:4px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer;z-index:55;text-align:center;line-height:20px;touch-action:manipulation;}
+#craft-close-btn:active{background:rgba(255,60,60,1);}
+</style>
 </head>
 <body>
 <div id="title">
@@ -84,7 +88,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <div id="fly-indicator">FLYING</div>
 <div id="time-display"></div>
 <div id="inv-bar"></div>
-<div id="craft-screen"><h3>Crafting</h3><div id="recipe-list"></div></div>
+<div id="craft-btn" onclick="toggleCraftingMenu()" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()">Craft</div>
+<div id="craft-screen"><h3>Crafting<span id="craft-close-btn" onclick="hideCrafting()" ontouchstart="event.stopPropagation()">X</span></h3><div id="recipe-list"></div></div>
 <div id="furnace-screen"><h3>&#128293; Furnace</h3><div class="fuel-info">Fuel: 1 Coal per smelt</div><div id="smelt-list"></div><div class="close-btn" onclick="closeFurnace()">Close</div></div>
 <div id="pause-menu"><h3>PAUSED</h3><div class="menu-btn" onclick="resumeGame()">Resume</div>
 <div id="chest-screen"><h3>Chest Storage</h3><div id="chest-slots"></div><h3>Your Inventory</h3><div id="chest-inv"></div></div>
@@ -761,8 +766,12 @@ hr=hr%12;if(hr==0)hr=12;
 td.textContent=(isNight?'\u263D':'\u2600')+' '+hr+ampm;
 }
 // === CRAFTING UI ===
+
+
+document.addEventListener('click',function(e){if(gameState=='crafting'){var cs=document.getElementById('craft-screen');if(e.target===cs)hideCrafting();}});
+function toggleCraftingMenu(){if(gameState=='crafting'){hideCrafting();}else if(gameState=='playing'){showCrafting();}}
 function showCrafting(){
-gameState='crafting';
+gameState='crafting';document.getElementById('craft-btn').style.display='none';
 var cs=document.getElementById('craft-screen');cs.style.display='block';
 var rl=document.getElementById('recipe-list');rl.innerHTML='';
 for(var r=0;r<RECIPES.length;r++){
@@ -781,7 +790,7 @@ if(canCraft){(function(rec){div.onclick=function(){craftItem(rec);};})(rec);}
 rl.appendChild(div);
 }
 }
-function hideCrafting(){gameState='playing';document.getElementById('zoom-btn').style.display='block';document.getElementById('autolock-btn').style.display='block';document.getElementById('combat-btn').style.display='block';document.getElementById('craft-screen').style.display='none';}
+function hideCrafting(){gameState='playing';document.getElementById('craft-btn').style.display='block';document.getElementById('zoom-btn').style.display='block';document.getElementById('autolock-btn').style.display='block';document.getElementById('craft-btn').style.display='block';document.getElementById('combat-btn').style.display='block';document.getElementById('craft-screen').style.display='none';}
 function craftItem(rec){
 for(var j=0;j<rec.inp.length;j++){if(countItem(rec.inp[j][0])<rec.inp[j][1])return;}
 for(var j=0;j<rec.inp.length;j++){removeItem(rec.inp[j][0],rec.inp[j][1]);}
