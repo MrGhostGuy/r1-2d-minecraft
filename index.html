@@ -912,7 +912,7 @@ if(gameState=='playing'){
 updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updateCrops(dt);updateDayNight();spawnEnemies();updateEntities(dt);
 if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
 render();renderAutoLock();ctx.restore();renderHUD();
-if(gameMsgTimer>0||gameMsgText){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
+if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
 
 }
 if(gameState=='dead'){
@@ -985,9 +985,9 @@ if(gameState=='paused'){document.getElementById('pause-menu').style.display='blo
 function doSaveGame(){
 var name=document.getElementById('save-name-input').value.trim();
 if(!name){name='Save '+(Object.keys(getSaves()).length+1);}
-if(saveGame(name)){closeSaveScreen();if(gameState=='paused'){resumeGame();}showMsg('Game saved: '+name);}
+if(saveGame(name)){closeSaveScreen();if(gameState=='paused'){resumeGame();}showGameMsg('Game saved: '+name);}
 }
-function showMsg(msg){gameMsgTimer=120;gameMsgText=msg;}
+
 function renderSaveSlots(){
 var list=document.getElementById('save-slots-list');list.innerHTML='';
 var saves=getSaves();var keys=Object.keys(saves);
@@ -1036,10 +1036,10 @@ gameState='playing';
 document.getElementById('save-btn-hud').style.display='block';
 lastTime=performance.now();
 requestAnimationFrame(gameLoop);
-showMsg('Loaded: '+name);
+showGameMsg('Loaded: '+name);
 }
 }
-var gameMsgText='';var gameMsgTimer=0;
+
 
 </script>
 <div id="save-screen"><h3>SAVE GAME</h3><input type="text" id="save-name-input" placeholder="Enter save name..." maxlength="20"><div id="save-slots-list"></div><button class="save-menu-btn" onclick="doSaveGame()">Save</button><button class="save-menu-btn cancel" onclick="closeSaveScreen()">Cancel</button></div>
