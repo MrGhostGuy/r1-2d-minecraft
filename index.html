@@ -768,7 +768,7 @@ td.textContent=(isNight?'\u263D':'\u2600')+' '+hr+ampm;
 // === CRAFTING UI ===
 
 
-document.addEventListener('click',function(e){if(gameState=='crafting'){var cs=document.getElementById('craft-screen');if(e.target===cs)hideCrafting();}});
+document.addEventListener('click',function(e){if(gameState=='crafting'){var cs=document.getElementById('craft-screen');var rl=document.getElementById('recipe-list');if(!rl.contains(e.target)&&e.target.id!=='craft-close-btn')hideCrafting();}});
 function toggleCraftingMenu(){if(gameState=='crafting'){hideCrafting();}else if(gameState=='playing'){showCrafting();}}
 function showCrafting(){
 gameState='crafting';document.getElementById('craft-btn').style.display='none';
@@ -812,7 +812,7 @@ if(e.key=='q')mineBlock();
 if(e.key=='e')placeBlock();
 if(e.key=='f')attackEntity();
 if(e.key=='r')eatFood();
-if(e.key=='c'){if(gameState=='crafting')hideCrafting();else showCrafting();}
+if(e.key=='c')toggleCraftingMenu();
 if(e.key=='Escape'){if(gameState=='crafting')hideCrafting();if(gameState=='furnace')closeFurnace();if(gameState=='chest')closeChest();}
 if(e.key>='1'&&e.key<='9')player.selectedSlot=parseInt(e.key)-1;
 e.preventDefault();
