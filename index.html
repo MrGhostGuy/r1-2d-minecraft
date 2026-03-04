@@ -88,7 +88,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <h1>2D MINECRAFT</h1>
 <h2>Rabbit R1 Edition</h2>
 <div class="credit">Created by Jeff Hollaway [GhostLegacyX]</div>
-<div class="menu-btn" onclick="startGame('survival')"><b>Survival Mode</b><br><span style="font-size:6px;color:#aaa">Health, Hunger, Mobs, Crafting</span></div>
+<div class="menu-btn" onclick="startGame('survival')"><b>Survival Mode</b><br><span style="font-size:6px;color:#aaa">Health, Mobs, Crafting</span></div>
     <div class="menu-btn" onclick="startGame('creative')"><b>Creative Mode</b><br><span style="font-size:6px;color:#aaa">Fly, Infinite Blocks, No Damage</span></div>
 <div class="menu-btn" onclick="openLoadScreenFromTitle()">Load Game</div></div>
 <canvas id="game" width="240" height="260"></canvas>
@@ -469,13 +469,7 @@ else if(type=='shovel'){g.fillRect(6,6,2,2);g.fillRect(8,4,2,2);g.fillRect(4,10,
 spriteCache[key]=oc;ctx2.drawImage(oc,x,y,w,h);}
 
 // === HUNGER & SURVIVAL MECHANICS ===
-function updateHunger(dt){
-if(gameMode=='creative')return;
-player.hungerTimer+=dt;
-if(player.hungerTimer>=80){player.hungerTimer=0;player.hunger=Math.max(0,player.hunger-1);}
-if(player.hunger<=0){player.hp=Math.max(0,player.hp-1);if(player.hp<=0)gameOver();}
-if(player.hunger>16&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+0.02);}
-}
+function updateHunger(dt){return;}
 function toggleFly(){
 if(gameMode!='creative')return;
 player.flying=!player.flying;
@@ -752,7 +746,7 @@ if(hpBar)hpBar.style.display='none';
 if(hunBar)hunBar.style.display='none';
 }else{
 if(hpBar){hpBar.style.display='block';hpBar.innerHTML='';for(var h=0;h<10;h++){hpBar.innerHTML+=(h<Math.ceil(player.hp/2))?'\u2764':'\u2661';}}
-if(hunBar){hunBar.style.display='block';hunBar.innerHTML='';for(var h=0;h<10;h++){hunBar.innerHTML+=(h<Math.ceil(player.hunger/2))?'\ud83c\udf56':'\u2022';}}
+if(hunBar){hunBar.style.display='none';for(var h=0;h<10;h++){hunBar.innerHTML+=(h<Math.ceil(player.hunger/2))?'\ud83c\udf56':'\u2022';}}
 }
 var hb=document.getElementById('inv-bar');hb.innerHTML='';
 for(var i=0;i<9;i++){
@@ -818,6 +812,7 @@ showCrafting();
 // Keyboard
 document.addEventListener('keydown',function(e){
 if(gameState=='title')return;
+if(gameState=='dead'){restartGame();return;}
 if(e.key=='f'||e.key=='F')toggleFly();
 if(e.key=='ArrowDown'||e.key=='s')keys.down=true;
 if(e.key=='ArrowLeft'||e.key=='a')keys.left=true;
