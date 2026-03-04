@@ -330,7 +330,11 @@ for(var i=0;i<3;i++)particles.push({x:bx*TILE+4,y:by*TILE+4,vx:(Math.random()-0.
 }
 }
 function placeBlock(){
-var bx=cursorX,by=cursorY;
+var bx=Math.floor(player.x/TILE),by=0;
+for(var sy=WORLD_H-1;sy>=0;sy--){if(world[bx][sy]!=BLOCKS.AIR&&world[bx][sy]!=BLOCKS.WATER){by=sy-1;break;}}
+if(by<0)by=0;
+while(by>0&&world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER){by--;}
+if(by<0)return;
 if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)return;
 if(world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER)return;
 var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);
@@ -847,7 +851,7 @@ player.selectedSlot=(player.selectedSlot+1)%9;
 });
 // R1 Hardware: Side button
 window.addEventListener('sideClick',function(){
-if(gameState=='title'){startGame('survival');return;}
+if(gameState=='title'){return;}
 if(gameState=='crafting'){hideCrafting();return;}
 if(gameState=='furnace'){closeFurnace();return;}
 if(gameState=='chest'){closeChest();return;}
@@ -887,8 +891,8 @@ canvas=document.getElementById('game');ctx=canvas.getContext('2d');
 
 
 generateWorld();
-if(mode=='creative'){for(var b=1;b<=28;b++)if(b!=14&&b!=13)addItem(b,64);}
-else{addItem(BLOCKS.WOOD,10);addItem(BLOCKS.PLANKS,5);}
+if(mode=='creative'){for(var b=1;b<=28;b++)addItem(b,64);for(var t=100;t<=120;t++)addItem(t,64);}
+else{addItem(ITEMS.WOOD_PICK,1);addItem(ITEMS.WOOD_AXE,1);}
 lastTime=performance.now();
 requestAnimationFrame(gameLoop);
 }
@@ -897,8 +901,8 @@ gameState='playing';player.hp=player.maxHp;
 entities=[];particles=[];miningProgress=0;
 inventory=[];for(var i=0;i<36;i++)inventory.push({id:0,count:0});
 generateWorld();
-if(gameMode=='creative'){for(var b=1;b<=28;b++)if(b!=14&&b!=13)addItem(b,64);}
-else{addItem(BLOCKS.WOOD,10);addItem(BLOCKS.PLANKS,5);}
+if(gameMode=='creative'){for(var b=1;b<=28;b++)addItem(b,64);for(var t=100;t<=120;t++)addItem(t,64);}
+else{addItem(ITEMS.WOOD_PICK,1);addItem(ITEMS.WOOD_AXE,1);}
 }
 function resumeGame(){gameState='playing';document.getElementById('pause-menu').style.display='none';}
 function gameLoop(now){
