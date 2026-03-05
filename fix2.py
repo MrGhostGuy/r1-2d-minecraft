@@ -1,96 +1,119 @@
-import re
-p = r'C:\Users\kency\Desktop\r1-2d-minecraft\index.html'
+p = 'index.html'
 c = open(p, 'r', encoding='utf-8').read()
-print('Len:', len(c))
+ch = 0
 
-# Fix A: Add TOOL_POWER for hoes (individual assignment style)
-# Find last TOOL_POWER assignment to append after it
-tp_last = c.rfind('TOOL_POWER[')
-tp_end = c.index(';', tp_last) + 1
-hoe_powers = 'TOOL_POWER[126]=2;TOOL_POWER[131]=3;TOOL_POWER[132]=5;TOOL_POWER[133]=7;'
-c = c[:tp_end] + hoe_powers + c[tp_end:]
-print('A: Hoe TOOL_POWER added')
-
-# Fix B: Add TOOL_TIER for hoes (individual entries in object literal)
-# TOOL_TIER is object literal: {101:'wood',...,133:'diamond'}
-# We already added 131:'stone',132:'iron',133:'diamond' but check
-if "131:'stone'" not in c:
-    c = c.replace("133:'diamond'}", "131:'stone',132:'iron',133:'diamond'}")
-    print('B: Hoe TOOL_TIER added')
+# Fix A: Verify DOOR is in isSolid exceptions
+if 'BLOCKS.DOOR' not in c[c.find('function isSolid'):c.find('function isSolid')+300]:
+    old = 'b!=BLOCKS.WHEAT2&&b!'
+    if old in c:
+        c = c.replace(old, 'b!=BLOCKS.WHEAT2&&b!=BLOCKS.DOOR&&b!', 1)
+        ch += 1
+        print('A: Added DOOR to isSolid')
+    else:
+        print('A: WARN - pattern not found')
 else:
-    print('B: Hoe TOOL_TIER already present')
+    print('A: DOOR already in isSolid')
 
-# Fix C: Add sheep entity rendering color
-# Find entity color rendering - entities use fillStyle based on type
-# Pattern: ctx.fillStyle=...zombie...skeleton...creeper...
-# Find where entity rendering colors are assigned
-color_match = re.search(r"ctx\.fillStyle=(e\.type[^;]+);", c)
-if color_match:
-    old = color_match.group(0)
-    print('C: Found color:', old[:80])
-    # Add sheep as white before the fallback color
-    if "'sheep'" not in old:
-        new = old.replace("'#555'", "e.type=='sheep'?'#fff':'#555'")
-        if new == old:
-            new = old.replace("'#a00'", "e.type=='sheep'?'#fff':'#a00'")
-        if new != old:
-            c = c.replace(old, new)
-            print('C: Sheep color added')
+# Fix B: Add null check in findCombatTarget
+fct = c.find('findCombatTarget')
+if fct >= 0:
+    old_pat = 'var e=entities[i];if(e.hp<=0)continue'
+    pos = c.find(old_pat, fct)
+    if pos >= 0 and pos < fct + 500:
+        new_pat = 'var e=entities[i];if(!e||typeof e.hp!="number"||e.hp<=0)continue'
+        c = c[:pos] + new_pat + c[pos+len(old_pat):]
+        ch += 1
+        print('B: Added null check in findCombatTarget')
+    else:
+        # Try alternate pattern
+        old2 = 'var e=entities[i];if'
+        pos2 = c.find(old2, fct)
+        if pos2 >= 0 and pos2 < fct + 500:
+            after = c[pos2+len(old2):pos2+len(old2)+50]
+            if '!e' not in c[pos2:pos2+80]:
+                new2 = 'var e=entities[i];if(!e||typeof e.hp!="number")continue;if'
+                c = c[:pos2] + new2 + c[pos2+len(old2):]
+                ch += 1
+                print('B: Added null check in findCombatTarget (alt)')
+            else:
+                print('B: findCombatTarget already has null check')
         else:
-            print('C: Could not add sheep color automatically')
-            print('C: Full match:', old)
+            print('B: findCombatTarget entity access not found')
 else:
-    print('C: No entity color pattern found, searching manually')
-    # Try to find renderEntities or entity render code
-    idx = c.find("e.type=='zombie'")
-    while idx != -1:
-        ctx = c[max(0,idx-80):idx+120]
-        if 'fillStyle' in ctx:
-            print('C: Found at', idx, ':', repr(ctx))
-            break
-        idx = c.find("e.type=='zombie'", idx+1)
+    print('B: findCombatTarget not found')
 
-
-# Fix D: Add SWORD_DMG for missing swords if needed
-sd_idx = c.find('SWORD_DMG')
-if sd_idx > 0:
-    sd_area = c[sd_idx:sd_idx+200]
-    print('D: SWORD_DMG area:', sd_area[:100])
-
-# Fix E: Make sure isSolid handles BED block (29) as non-solid walkable
-# BED should be non-solid (you can walk through the top)
-solid_idx = c.find('function isSolid')
-if solid_idx > 0:
-    solid_area = c[solid_idx:solid_idx+200]
-    print('E: isSolid:', solid_area[:150])
-
-# Fix F: Add BCOLORS for WOOL block rendering if placed
-bc_idx = c.rfind('BCOLORS[')
-bc_end = c.index(';', bc_idx) + 1
-if 'BCOLORS[129]' not in c:
-    # WOOL isn't a block, it's an item. Skip this.
-    pass
-
-# Fix G: Verify spawnSheep function exists
-if 'function spawnSheep()' in c:
-    print('G: spawnSheep function exists')
+# Fix C: Safe health bar rendering
+old_hp = 'e.w*(e.hp/e.maxHp)'
+if old_hp in c:
+    new_hp = 'e.w*((e.hp||0)/(e.maxHp||1))'
+    c = c.replace(old_hp, new_hp)
+    ch += 1
+    print('C: Fixed health bar safety')
 else:
-    print('G: WARNING - spawnSheep missing!')
+    print('C: Health bar pattern not found or already fixed')
 
-# Fix H: Verify BED interaction code
-if 'BLOCKS.BED' in c:
-    print('H: BED interaction exists')
+# Fix D: Wrap entity rendering loop with null check
+# Find all entity rendering for-loops
+import re
+renders = list(re.finditer(r'for\(var i=0;i<entities\.length;i\+\+\)\{', c))
+for m in renders:
+    start = m.end()
+    next_code = c[start:start+100]
+    if 'var e=entities[i];' in next_code:
+        e_pos = c.find('var e=entities[i];', start)
+        if e_pos >= 0 and e_pos < start + 60:
+            after_e = c[e_pos+18:e_pos+50]
+            if '!e' not in after_e:
+                insert = 'if(!e)continue;'
+                c = c[:e_pos+18] + insert + c[e_pos+18:]
+                ch += 1
+                ln = c[:e_pos].count('\n') + 1
+                print(f'D: Added null check in entity render loop at line {ln}')
+
+# Fix E: Wrap updateEntities loop body in try-catch
+ue = c.find('function updateEntities')
+if ue >= 0:
+    # Find the for loop opening
+    loop_start = c.find('for(var i=entities.length-1;i>=0;i--){', ue)
+    if loop_start >= 0:
+        brace_pos = loop_start + len('for(var i=entities.length-1;i>=0;i--){')
+        # Check if try already exists
+        after_brace = c[brace_pos:brace_pos+10]
+        if 'try' not in after_brace:
+            c = c[:brace_pos] + 'try{' + c[brace_pos:]
+            # Now find the closing of the for loop
+            # The for loop ends with }} before function attackEntity
+            ae = c.find('function attackEntity', ue)
+            if ae >= 0:
+                # Search backwards from attackEntity for }}
+                search_area = c[ue:ae]
+                # Find last }}\n in the area
+                last_close = search_area.rfind('}}\n')
+                if last_close >= 0:
+                    abs_pos = ue + last_close
+                    c = c[:abs_pos] + '}catch(err){entities.splice(i,1);}' + c[abs_pos:]
+                    ch += 1
+                    print('E: Added try-catch in updateEntities loop')
+                else:
+                    print('E: Could not find loop end for catch')
+            else:
+                print('E: attackEntity not found for catch insertion')
+        else:
+            print('E: try-catch already exists in updateEntities')
+
+# Fix F: Door recipe in RECIPES
+recipes_area = c[c.find('var RECIPES='):c.find('var RECIPES=')+3000] if 'var RECIPES=' in c else ''
+if 'Door' in recipes_area:
+    print('F: Door recipe already exists')
 else:
-    print('H: WARNING - BED interaction missing!')
-
-# Fix I: Add rotten flesh food effect (edible but chance of hunger)
-# Find food/eating code
-eat_idx = c.find('COOKED_PORK')
-if eat_idx > 0:
-    eat_area = c[eat_idx:eat_idx+300]
-    print('I: Food area:', eat_area[:150])
+    rend = c.find('];', c.find('var RECIPES='))
+    if rend >= 0:
+        c = c[:rend] + ",{inp:[[11,6]],out:23,cnt:1,name:'Door'}" + c[rend:]
+        ch += 1
+        print('F: Added Door recipe')
 
 # Save
 open(p, 'w', encoding='utf-8', newline='').write(c)
-print('File saved! Length:', len(c))
+print(f'File saved! Length: {len(c)}')
+print(f'Total changes: {ch}')
 print('Fix2 complete!')
