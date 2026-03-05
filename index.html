@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -114,7 +114,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <script>
 // === GAME CONSTANTS ===
 var W=240,H=260,TILE=8,COLS=30,ROWS=32;
-var CHUNK_W=16,WORLD_W=256,WORLD_H=64,SEA=32;
+var CHUNK_W=16,WORLD_W=128,WORLD_H=40,SEA=20;
 var BLOCKS={AIR:0,DIRT:1,GRASS:2,STONE:3,SAND:4,WOOD:5,LEAVES:6,COAL_ORE:7,IRON_ORE:8,GOLD_ORE:9,DIAMOND_ORE:10,PLANKS:11,COBBLE:12,BEDROCK:13,WATER:14,SNOW:15,GLASS:16,TORCH:17,FURNACE:18,CHEST:19,GRAVEL:20,CLAY:21,CACTUS:22,DOOR:23,LADDER:24,FARMLAND:25,WHEAT1:26,WHEAT2:27,WHEAT3:28,BED:29};
 var ITEMS={STICK:100,WOOD_PICK:101,STONE_PICK:102,IRON_PICK:103,DIAMOND_PICK:104,WOOD_SWORD:105,STONE_SWORD:106,IRON_SWORD:107,DIAMOND_SWORD:108,WOOD_AXE:109,WOOD_SHOVEL:110,IRON_INGOT:111,GOLD_INGOT:112,DIAMOND:113,COAL:114,RAW_PORK:115,COOKED_PORK:116,STONE_AXE:117,IRON_AXE:118,DIAMOND_AXE:119,STONE_SHOVEL:120,IRON_SHOVEL:121,DIAMOND_SHOVEL:122,WHEAT_SEEDS:123,WHEAT_ITEM:124,BREAD:125,WOOD_HOE:126,STRING:127,BONE:128,WOOL:129,ROTTEN_FLESH:130,STONE_HOE:131,IRON_HOE:132,DIAMOND_HOE:133,DOOR_ITEM:134};
 var BCOLORS={};
@@ -177,13 +177,19 @@ var player={x:128,y:0,vx:0,vy:0,w:6,h:12,onGround:false,hp:20,maxHp:20,air:10,se
 var inventory=[];for(var i=0;i<36;i++)inventory.push({id:0,count:0});
 var hotbar=9,cursorX=15,cursorY=15;
 var dayTime=0,dayLength=12000,isNight=false;
+// === WEATHER SYSTEM ===
+var weatherState='clear',weatherTimer=0,weatherDuration=0,weatherTransition=0;
+var raindrops=[],lightningFlash=0,lightningTimer=0,thunderTimer=0;
+var weatherIntensity=0,targetIntensity=0;
+var WEATHER_MIN_CLEAR=1800,WEATHER_MAX_CLEAR=6000;
+var WEATHER_MIN_STORM=600,WEATHER_MAX_STORM=2400;
 var entities=[],particles=[];
 var keys={left:false,right:false,up:false,down:false};
 var touchStartX=0,touchStartY=0,touchActive=false;
 var lastTime=0,dt=0,fps=0,frameCount=0,fpsTime=0;
 var miningProgress=0,miningTarget={x:-1,y:-1};
 // === WORLD GENERATION ===
-function noise(x){x=(x<<13)^x;return(1.0-((x*(x*x*15731+789221)+1376312589)&0x7fffffff)/1073741824.0);}
+function noise(x){var s=Math.sin(x*127.1)*43758.5453;return s-Math.floor(s);}
 function smoothNoise(x){return noise(Math.floor(x))/2+noise(Math.floor(x)-1)/4+noise(Math.floor(x)+1)/4;}
 function interpNoise(x){var ix=Math.floor(x),f=x-ix;f=f*f*(3-2*f);return smoothNoise(ix)*(1-f)+smoothNoise(ix+1)*f;}
 function octaveNoise(x,oct){var v=0,amp=1,freq=1,max=0;for(var i=0;i<oct;i++){v+=interpNoise(x*freq)*amp;max+=amp;amp*=0.5;freq*=2;}return v/max;}
@@ -192,7 +198,7 @@ world=[];
 for(var x=0;x<WORLD_W;x++){world[x]=[];for(var y=0;y<WORLD_H;y++)world[x][y]=BLOCKS.AIR;}
 var seed=Math.random()*10000;
 for(var x=0;x<WORLD_W;x++){
-var h=Math.floor(SEA-14+octaveNoise((x+seed)*0.02,4)*6);
+var h=Math.floor(SEA-8+octaveNoise((x+seed)*0.05,4)*6);if(h<4)h=4;if(h>=WORLD_H-1)h=WORLD_H-2;
 var biome=getBiome(x,seed);
 // Surface
 for(var y=h;y<WORLD_H;y++){
@@ -287,10 +293,10 @@ else if(y>h+2&&wallOre>0.4){if(x>0&&world[x-1][y]==BLOCKS.STONE)world[x-1][y]=BL
 }
 }
 }
-// Water in low areas
-for(var y=0;y<WORLD_H;y++){
-if(y==SEA&&world[x][y]==BLOCKS.AIR)world[x][y]=BLOCKS.WATER;
-}
+// Small ponds only - use noise to decide if this column gets a pond
+var pondChance=noise((x+seed)*0.3);if(pondChance>0.85){for(var wy=h;wy<h+2&&wy<WORLD_H;wy++){if(world[x][wy]==BLOCKS.AIR)world[x][wy]=BLOCKS.WATER;}}
+
+
 }
 // Find spawn
 player.x=WORLD_W/2*TILE;
@@ -540,6 +546,54 @@ if(t<0.5){var f=(t-0.4)/0.1;return'rgb('+Math.floor(255-245*f)+','+Math.floor(70
 if(t<0.75)return'rgb(10,10,30)';
 if(t<0.9){var f=(t-0.75)/0.15;return'rgb('+Math.floor(10+245*f)+','+Math.floor(10+60*f)+','+Math.floor(30+70*f)+')';}
 var f=(t-0.9)/0.1;return'rgb('+Math.floor(255-155*f)+','+Math.floor(70+100*f)+','+Math.floor(100+155*f)+')';
+}
+// === WEATHER UPDATE & RENDER ===
+function updateWeather(){
+weatherTimer++;
+if(weatherState=='clear'){
+if(weatherTimer>=weatherDuration){
+if(Math.random()<0.35){weatherState='rain';weatherDuration=WEATHER_MIN_STORM+Math.floor(Math.random()*(WEATHER_MAX_STORM-WEATHER_MIN_STORM));targetIntensity=0.4+Math.random()*0.3;if(Math.random()<0.4){weatherState='thunder';targetIntensity=0.6+Math.random()*0.3;}}
+else{weatherDuration=WEATHER_MIN_CLEAR+Math.floor(Math.random()*(WEATHER_MAX_CLEAR-WEATHER_MIN_CLEAR));}
+weatherTimer=0;}
+}else{
+if(weatherTimer>=weatherDuration){weatherState='clear';weatherDuration=WEATHER_MIN_CLEAR+Math.floor(Math.random()*(WEATHER_MAX_CLEAR-WEATHER_MIN_CLEAR));weatherTimer=0;targetIntensity=0;}
+}
+// Smooth intensity transition
+if(weatherIntensity<targetIntensity)weatherIntensity=Math.min(weatherIntensity+0.005,targetIntensity);
+else if(weatherIntensity>targetIntensity)weatherIntensity=Math.max(weatherIntensity-0.005,targetIntensity);
+// Manage raindrops
+if(weatherState!='clear'&&weatherIntensity>0.1){
+var numNew=Math.floor(weatherIntensity*8);
+for(var i=0;i<numNew;i++){raindrops.push({x:Math.random()*W,y:-5-Math.random()*20,speed:4+Math.random()*4,len:3+Math.random()*4});}
+}
+for(var i=raindrops.length-1;i>=0;i--){raindrops[i].y+=raindrops[i].speed;if(raindrops[i].y>H+10)raindrops.splice(i,1);}
+if(raindrops.length>300)raindrops.splice(0,raindrops.length-300);
+// Lightning for thunderstorms
+if(weatherState=='thunder'&&weatherIntensity>0.3){
+lightningTimer++;
+if(lightningTimer>180+Math.floor(Math.random()*300)){lightningFlash=1.0;lightningTimer=0;thunderTimer=10+Math.floor(Math.random()*20);}
+}
+if(lightningFlash>0)lightningFlash=Math.max(0,lightningFlash-0.08);
+if(thunderTimer>0)thunderTimer--;
+}
+function renderWeather(){
+if(weatherIntensity<=0.01)return;
+// Darken sky overlay
+ctx.save();
+var darkAlpha=weatherIntensity*0.35;
+ctx.fillStyle='rgba(30,30,50,'+darkAlpha+')';
+ctx.fillRect(0,0,W,H);
+// Draw raindrops
+ctx.strokeStyle='rgba(180,200,255,'+(0.3+weatherIntensity*0.4)+')';
+ctx.lineWidth=1;
+ctx.beginPath();
+for(var i=0;i<raindrops.length;i++){var r=raindrops[i];ctx.moveTo(r.x,r.y);ctx.lineTo(r.x-1,r.y+r.len);}
+ctx.stroke();
+// Lightning flash
+if(lightningFlash>0){ctx.fillStyle='rgba(255,255,240,'+lightningFlash*0.7+')';ctx.fillRect(0,0,W,H);
+// Draw lightning bolt
+if(lightningFlash>0.5){ctx.strokeStyle='rgba(255,255,200,'+lightningFlash+')';ctx.lineWidth=2;ctx.beginPath();var lx=40+Math.random()*(W-80),ly=0;ctx.moveTo(lx,ly);for(var s=0;s<5;s++){lx+=(Math.random()-0.5)*20;ly+=H/6;ctx.lineTo(lx,ly);}ctx.stroke();ctx.lineWidth=1;}}
+ctx.restore();
 }
 function gameOver(){if(gameMode=='creative'){player.hp=player.maxHp;return;}deathX=player.x;deathY=player.y;dropItemsOnDeath();gameState='dead';}
 function dropItemsOnDeath(){var PICK=[101,102,103,104],AXE=[109,117,118,119];var TL={101:1,102:2,103:3,104:4,109:1,117:2,118:3,119:4};var bestPick=-1,bestPickTier=0,bestAxe=-1,bestAxeTier=0;for(var i=0;i<36;i++){var s=inventory[i];if(s.id==0||s.count==0)continue;if(PICK.indexOf(s.id)>=0&&TL[s.id]>bestPickTier){bestPickTier=TL[s.id];bestPick=i;}if(AXE.indexOf(s.id)>=0&&TL[s.id]>bestAxeTier){bestAxeTier=TL[s.id];bestAxe=i;}}for(var i=0;i<36;i++){var s=inventory[i];if(s.id==0||s.count==0)continue;var isPick=PICK.indexOf(s.id)>=0,isAxe=AXE.indexOf(s.id)>=0;if(i==bestPick&&isPick){if(s.count>1){droppedItems.push({id:s.id,count:s.count-1,x:deathX+(Math.random()*20-10),y:deathY-8,vx:(Math.random()-0.5)*2,vy:-2-Math.random()*2,grounded:false,life:36000});s.count=1;}continue;}if(i==bestAxe&&isAxe){if(s.count>1){droppedItems.push({id:s.id,count:s.count-1,x:deathX+(Math.random()*20-10),y:deathY-8,vx:(Math.random()-0.5)*2,vy:-2-Math.random()*2,grounded:false,life:36000});s.count=1;}continue;}droppedItems.push({id:s.id,count:s.count,x:deathX+(Math.random()*20-10),y:deathY-8,vx:(Math.random()-0.5)*2,vy:-2-Math.random()*2,grounded:false,life:36000});s.id=0;s.count=0;}showGameMsg('Items dropped at death location!');}
@@ -1016,7 +1070,7 @@ e.preventDefault();touchActive=false;keys.left=false;keys.right=false;keys.up=fa
 },{passive:false});
 // === GAME LOOP ===
 function startGame(mode){
-gameMode=mode;gameState='playing';
+gameMode=mode;gameState='playing';weatherState='clear';weatherTimer=0;weatherDuration=WEATHER_MIN_CLEAR+Math.floor(Math.random()*(WEATHER_MAX_CLEAR-WEATHER_MIN_CLEAR));weatherIntensity=0;targetIntensity=0;raindrops=[];lightningFlash=0;
 document.getElementById('title').style.display='none';
 canvas=document.getElementById('game');ctx=canvas.getContext('2d');
 
@@ -1039,9 +1093,9 @@ function resumeGame(){gameState='playing';document.getElementById('pause-menu').
 function gameLoop(now){
 dt=(now-lastTime)/16.67;if(dt>3)dt=3;lastTime=now;
 if(gameState=='playing'){
-updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updateCrops(dt);updateDayNight();spawnEnemies();spawnCaveEnemies();spawnSheep();updateEntities(dt);updateAutoLock();updateAutoCombat(dt);updateDroppedItems(dt);
+updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updateCrops(dt);updateDayNight();updateWeather();spawnEnemies();spawnCaveEnemies();spawnSheep();updateEntities(dt);updateAutoLock();updateAutoCombat(dt);updateDroppedItems(dt);
 if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
-render();renderDroppedItems(ctx,camX,camY);renderAutoLock();renderAutoCombat(ctx,camX,camY);ctx.restore();renderHUD();
+render();renderDroppedItems(ctx,camX,camY);renderAutoLock();renderAutoCombat(ctx,camX,camY);renderWeather();ctx.restore();renderHUD();
 if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
 
 }
