@@ -1,7 +1,8 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P" rel="stylesheet">
 <meta name="viewport" content="width=240,height=282,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>2D Minecraft R1</title>
 <style>
@@ -9,10 +10,10 @@
 html,body{width:240px;height:282px;overflow:hidden;background:#000;font-family:monospace;}
 canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #title{position:absolute;top:0;left:0;width:240px;height:282px;background:#4a8f3f;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;color:#fff;text-align:center;}
-#title h1{font-size:14px;color:#5c3;text-shadow:1px 1px #000;margin-bottom:8px;}
-#title h2{font-size:9px;color:#fff;margin-bottom:4px;}
-#title .credit{font-size:7px;color:#fd0;margin-bottom:12px;}
-#title .menu-btn{background:#555;color:#fff;border:1px solid #888;padding:8px 12px;font-size:9px;margin:4px;cursor:pointer;font-family:monospace;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,0.3);user-select:none;-webkit-user-select:none;}
+#title h1{font-family:'Press Start 2P',monospace;font-size:11px;color:#5c3;text-shadow:2px 2px #000,1px 1px #2a5f1f;margin-bottom:8px;letter-spacing:1px;}
+#title h2{font-family:'Press Start 2P',monospace;font-size:6px;color:#fff;margin-bottom:4px;text-shadow:1px 1px #000;}
+#title .credit{font-family:'Press Start 2P',monospace;font-size:5px;color:#fd0;margin-bottom:12px;text-shadow:1px 1px #000;}
+#title .menu-btn{background:#555;color:#fff;border:1px solid #888;padding:8px 12px;font-size:6px;margin:4px;cursor:pointer;font-family:'Press Start 2P',monospace;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,0.3);user-select:none;-webkit-user-select:none;}
 #title .menu-btn:hover{background:#777;}
 #hud{position:absolute;top:0;left:0;width:240px;pointer-events:none;z-index:10;}
 #inv-bar{position:absolute;bottom:0;left:0;width:240px;height:22px;background:rgba(0,0,0,0.7);display:flex;z-index:10;}
@@ -27,7 +28,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 .recipe .r-name{flex:1;font-size:7px;}
 .recipe .r-cost{font-size:6px;color:#aaa;}
 #pause-menu{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.8);z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;}
-#hunger-bar{position:absolute;top:12px;left:2px;z-index:10;font-size:7px;}
+#hunger-bar{display:none!important;}
 #fly-indicator{position:absolute;top:22px;left:2px;color:#0ff;font-size:7px;z-index:10;display:none;}
 #health-bar{position:absolute;top:2px;left:2px;z-index:10;}
 #time-display{position:absolute;top:2px;right:2px;font-size:7px;color:#fff;z-index:10;text-shadow:1px 1px #000;}
@@ -101,7 +102,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <div id="zoom-btn" onclick="toggleZoom()">&#128269;</div>
 <div id="zoom-panel"><span id="zoom-label">1.0x</span><input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1" oninput="setZoom(this.value)" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()"></div>
 <div id="health-bar"></div>
-<div id="hunger-bar"></div>
+<!-- hunger bar removed -->
 <div id="fly-indicator">FLYING</div>
 <div id="time-display"></div>
 <div id="inv-bar"></div>
@@ -114,8 +115,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 // === GAME CONSTANTS ===
 var W=240,H=260,TILE=8,COLS=30,ROWS=32;
 var CHUNK_W=16,WORLD_W=256,WORLD_H=64,SEA=32;
-var BLOCKS={AIR:0,DIRT:1,GRASS:2,STONE:3,SAND:4,WOOD:5,LEAVES:6,COAL_ORE:7,IRON_ORE:8,GOLD_ORE:9,DIAMOND_ORE:10,PLANKS:11,COBBLE:12,BEDROCK:13,WATER:14,SNOW:15,GLASS:16,TORCH:17,FURNACE:18,CHEST:19,GRAVEL:20,CLAY:21,CACTUS:22,DOOR:23,LADDER:24,FARMLAND:25,WHEAT1:26,WHEAT2:27,WHEAT3:28};
-var ITEMS={STICK:100,WOOD_PICK:101,STONE_PICK:102,IRON_PICK:103,DIAMOND_PICK:104,WOOD_SWORD:105,STONE_SWORD:106,IRON_SWORD:107,DIAMOND_SWORD:108,WOOD_AXE:109,WOOD_SHOVEL:110,IRON_INGOT:111,GOLD_INGOT:112,DIAMOND:113,COAL:114,RAW_PORK:115,COOKED_PORK:116,STONE_AXE:117,IRON_AXE:118,DIAMOND_AXE:119,STONE_SHOVEL:120,IRON_SHOVEL:121,DIAMOND_SHOVEL:122,WHEAT_SEEDS:123,WHEAT_ITEM:124,BREAD:125,WOOD_HOE:126};
+var BLOCKS={AIR:0,DIRT:1,GRASS:2,STONE:3,SAND:4,WOOD:5,LEAVES:6,COAL_ORE:7,IRON_ORE:8,GOLD_ORE:9,DIAMOND_ORE:10,PLANKS:11,COBBLE:12,BEDROCK:13,WATER:14,SNOW:15,GLASS:16,TORCH:17,FURNACE:18,CHEST:19,GRAVEL:20,CLAY:21,CACTUS:22,DOOR:23,LADDER:24,FARMLAND:25,WHEAT1:26,WHEAT2:27,WHEAT3:28,BED:29};
+var ITEMS={STICK:100,WOOD_PICK:101,STONE_PICK:102,IRON_PICK:103,DIAMOND_PICK:104,WOOD_SWORD:105,STONE_SWORD:106,IRON_SWORD:107,DIAMOND_SWORD:108,WOOD_AXE:109,WOOD_SHOVEL:110,IRON_INGOT:111,GOLD_INGOT:112,DIAMOND:113,COAL:114,RAW_PORK:115,COOKED_PORK:116,STONE_AXE:117,IRON_AXE:118,DIAMOND_AXE:119,STONE_SHOVEL:120,IRON_SHOVEL:121,DIAMOND_SHOVEL:122,WHEAT_SEEDS:123,WHEAT_ITEM:124,BREAD:125,WOOD_HOE:126,STRING:127,BONE:128,WOOL:129,ROTTEN_FLESH:130,STONE_HOE:131,IRON_HOE:132,DIAMOND_HOE:133};
 var BCOLORS={};
 BCOLORS[0]='rgba(0,0,0,0)';BCOLORS[1]='#8B6914';BCOLORS[2]='#4a8f3f';BCOLORS[3]='#808080';BCOLORS[4]='#d2b48c';BCOLORS[5]='#8B5A2B';BCOLORS[6]='#228B22';BCOLORS[7]='#404040';BCOLORS[8]='#B87333';BCOLORS[9]='#FFD700';BCOLORS[10]='#00FFFF';BCOLORS[11]='#DEB887';BCOLORS[12]='#696969';BCOLORS[13]='#1a1a1a';BCOLORS[14]='rgba(30,100,200,0.6)';BCOLORS[15]='#F0F0F0';BCOLORS[16]='rgba(200,230,255,0.4)';BCOLORS[17]='#FFD700';BCOLORS[18]='#555';BCOLORS[19]='#8B4513';BCOLORS[20]='#9E9E9E';BCOLORS[21]='#B0A090';BCOLORS[22]='#006400';
 BCOLORS[23]='#8B4513';BCOLORS[24]='#C4A882';BCOLORS[25]='#6B3A1F';BCOLORS[26]='#2d8a2d';BCOLORS[27]='#4aa84a';BCOLORS[28]='#d4a017';
@@ -126,14 +127,14 @@ HARDNESS[1]=1;HARDNESS[2]=1;HARDNESS[3]=3;HARDNESS[4]=1;HARDNESS[5]=2;HARDNESS[6
 HARDNESS[23]=2;HARDNESS[24]=1;HARDNESS[25]=0.5;HARDNESS[26]=0;HARDNESS[27]=0;HARDNESS[28]=0;
 var DROPS={};
 DROPS[2]=1;DROPS[3]=12;DROPS[5]=5;DROPS[6]=0;DROPS[7]=114;DROPS[8]=8;DROPS[9]=9;DROPS[10]=113;DROPS[15]=15;DROPS[16]=0;DROPS[17]=17;DROPS[18]=18;DROPS[22]=22;
-DROPS[23]=23;DROPS[24]=24;DROPS[25]=1;DROPS[26]=123;DROPS[27]=123;DROPS[28]=124;
+DROPS[23]=23;DROPS[24]=24;DROPS[29]=29;DROPS[25]=1;DROPS[26]=123;DROPS[27]=123;DROPS[28]=124;
 var ICOLORS={};
 ICOLORS[100]='#8B5A2B';ICOLORS[101]='#DEB887';ICOLORS[102]='#696969';ICOLORS[103]='#B87333';ICOLORS[104]='#00FFFF';ICOLORS[105]='#DEB887';ICOLORS[106]='#696969';ICOLORS[107]='#B87333';ICOLORS[108]='#00FFFF';ICOLORS[109]='#DEB887';ICOLORS[110]='#DEB887';ICOLORS[111]='#C0C0C0';ICOLORS[112]='#FFD700';ICOLORS[113]='#00FFFF';ICOLORS[114]='#333';ICOLORS[115]='#FF8080';ICOLORS[116]='#CC5533';
-ICOLORS[123]='#2d5a1e';ICOLORS[124]='#d4a017';ICOLORS[125]='#c8a060';ICOLORS[126]='#DEB887';
+ICOLORS[123]='#2d5a1e';ICOLORS[124]='#d4a017';ICOLORS[125]='#c8a060';ICOLORS[126]='#DEB887';ICOLORS[127]='#EEEEEE';ICOLORS[128]='#F5F5DC';
 ICOLORS[117]='#696969';ICOLORS[118]='#B87333';ICOLORS[119]='#00FFFF';ICOLORS[120]='#696969';ICOLORS[121]='#B87333';ICOLORS[122]='#00FFFF';
 var INAMES={};
 INAMES[100]='Stick';INAMES[101]='Wood Pick';INAMES[102]='Stone Pick';INAMES[103]='Iron Pick';INAMES[104]='Dia Pick';INAMES[105]='Wood Sword';INAMES[106]='Stone Sword';INAMES[107]='Iron Sword';INAMES[108]='Dia Sword';INAMES[109]='Wood Axe';INAMES[110]='Wood Shovel';INAMES[111]='Iron Ingot';INAMES[112]='Gold Ingot';INAMES[113]='Diamond';INAMES[114]='Coal';INAMES[115]='Raw Pork';INAMES[116]='Cooked Pork';
-INAMES[123]='Seeds';INAMES[124]='Wheat';INAMES[125]='Bread';INAMES[126]='Wood Hoe';
+INAMES[123]='Seeds';INAMES[124]='Wheat';INAMES[125]='Bread';INAMES[126]='Wood Hoe';INAMES[127]='String';INAMES[128]='Bone';INAMES[129]='Wool';INAMES[130]='Rotten Flesh';INAMES[131]='Stone Hoe';INAMES[132]='Iron Hoe';INAMES[133]='Diamond Hoe';
 INAMES[117]='Stone Axe';INAMES[118]='Iron Axe';INAMES[119]='Diamond Axe';INAMES[120]='Stone Shovel';INAMES[121]='Iron Shovel';INAMES[122]='Diamond Shovel';
 var TOOL_POWER={};
 TOOL_POWER[101]=2;TOOL_POWER[102]=4;TOOL_POWER[103]=6;TOOL_POWER[104]=8;TOOL_POWER[109]=3;TOOL_POWER[110]=2;
@@ -166,7 +167,7 @@ var RECIPES=[
 {inp:[[11,8]],out:19,cnt:1,name:'Chest'},
 {inp:[[114,1],[100,1]],out:17,cnt:4,name:'Torch'},
 {inp:[[4,4]],out:16,cnt:4,name:'Glass'}
-];
+,{inp:[[127,4]],out:129,cnt:1,name:'Wool'},{inp:[[129,3],[11,3]],out:29,cnt:1,name:'Bed'},{inp:[[12,2],[100,2]],out:131,cnt:1,name:'Stone Hoe'},{inp:[[111,2],[100,2]],out:132,cnt:1,name:'Iron Hoe'},{inp:[[113,2],[100,2]],out:133,cnt:1,name:'Diamond Hoe'}];
 var SMELT={};SMELT[8]=111;SMELT[9]=112;SMELT[4]=16;SMELT[115]=116;SMELT[12]=3;
 // === GAME STATE ===
 var canvas,ctx,gameState='title',gameMode='survival';
@@ -190,7 +191,7 @@ world=[];
 for(var x=0;x<WORLD_W;x++){world[x]=[];for(var y=0;y<WORLD_H;y++)world[x][y]=BLOCKS.AIR;}
 var seed=Math.random()*10000;
 for(var x=0;x<WORLD_W;x++){
-var h=Math.floor(SEA+octaveNoise((x+seed)*0.02,4)*12);
+var h=Math.floor(SEA-14+octaveNoise((x+seed)*0.02,4)*6);
 var biome=getBiome(x,seed);
 // Surface
 for(var y=h;y<WORLD_H;y++){
@@ -214,17 +215,38 @@ else if(y>h+2&&oreN<0.09)world[x][y]=BLOCKS.COAL_ORE;
 else if(oreN<0.04)world[x][y]=BLOCKS.GRAVEL;
 }else{world[x][y]=BLOCKS.BEDROCK;}
 }
-// Caves - carve tunnels through underground
-for(var ci=0;ci<8;ci++){
-var cx=Math.floor(Math.random()*WORLD_W),cy=Math.floor(SEA+8+Math.random()*20);
-var cdir=Math.random()*Math.PI*2,clen=10+Math.floor(Math.random()*30);
+// Enhanced worm caves - varied sizes at different depths
+var caveTypes=[{n:4,minY:3,maxY:12,rad:1,len:20,spd:1.2},{n:5,minY:8,maxY:25,rad:2,len:35,spd:1.5},{n:4,minY:20,maxY:40,rad:3,len:50,spd:1.8}];
+for(var ct=0;ct<caveTypes.length;ct++){
+var cType=caveTypes[ct];
+for(var ci=0;ci<cType.n;ci++){
+var cx=Math.floor(Math.random()*WORLD_W),cy=Math.floor(SEA+cType.minY+Math.random()*(cType.maxY-cType.minY));
+var cdir=Math.random()*Math.PI*2,clen=cType.len+Math.floor(Math.random()*20);
+var crad=cType.rad;
 for(var cs=0;cs<clen;cs++){
 var bx=Math.floor(cx),by=Math.floor(cy);
-for(var dx=-1;dx<=1;dx++){for(var dy=-1;dy<=1;dy++){
+var r=crad+(Math.sin(cs*0.3)*0.5);
+for(var dx=-Math.ceil(r);dx<=Math.ceil(r);dx++){for(var dy=-Math.ceil(r);dy<=Math.ceil(r);dy++){
+if(dx*dx+dy*dy>r*r)continue;
 var nx=bx+dx,ny=by+dy;
-if(nx>=0&&nx<WORLD_W&&ny>=0&&ny<WORLD_H&&world[nx][ny]!=BLOCKS.BEDROCK&&world[nx][ny]!=BLOCKS.WATER)
-world[nx][ny]=BLOCKS.AIR;}}
-cx+=Math.cos(cdir)*1.5;cy+=Math.sin(cdir)*0.8;cdir+=Math.random()*0.6-0.3;}}
+if(nx>=0&&nx<WORLD_W&&ny>=0&&ny<WORLD_H&&world[nx][ny]!=BLOCKS.BEDROCK&&world[nx][ny]!=BLOCKS.WATER){
+if(world[nx][ny]==BLOCKS.STONE&&Math.random()<0.15){var oreD=(ny-SEA)/WORLD_H;if(oreD>0.4&&Math.random()<0.02)world[nx][ny]=BLOCKS.DIAMOND_ORE;else if(oreD>0.3&&Math.random()<0.04)world[nx][ny]=BLOCKS.GOLD_ORE;else if(oreD>0.15&&Math.random()<0.08)world[nx][ny]=BLOCKS.IRON_ORE;else world[nx][ny]=BLOCKS.COAL_ORE;}
+else world[nx][ny]=BLOCKS.AIR;}}}
+cx+=Math.cos(cdir)*cType.spd;cy+=Math.sin(cdir)*0.8;cdir+=Math.random()*0.6-0.3;}}}
+// Large caverns at deep levels for exploration
+for(var lc=0;lc<3;lc++){
+var lcx=20+Math.floor(Math.random()*(WORLD_W-40));
+var lcy=Math.floor(SEA+25+Math.random()*15);
+var lcw=6+Math.floor(Math.random()*8);
+var lch=4+Math.floor(Math.random()*5);
+for(var lx=-lcw;lx<=lcw;lx++){for(var ly=-lch;ly<=lch;ly++){
+var ldist=(lx*lx)/(lcw*lcw)+(ly*ly)/(lch*lch);
+if(ldist>1)continue;
+var lnx=lcx+lx,lny=lcy+ly;
+if(lnx>=0&&lnx<WORLD_W&&lny>=0&&lny<WORLD_H&&world[lnx][lny]!=BLOCKS.BEDROCK&&world[lnx][lny]!=BLOCKS.WATER){
+if(ldist>0.7&&world[lnx][lny]==BLOCKS.STONE){var oreR=Math.random();if(oreR<0.03)world[lnx][lny]=BLOCKS.DIAMOND_ORE;else if(oreR<0.08)world[lnx][lny]=BLOCKS.GOLD_ORE;else if(oreR<0.18)world[lnx][lny]=BLOCKS.IRON_ORE;else if(oreR<0.3)world[lnx][lny]=BLOCKS.COAL_ORE;}
+else world[lnx][lny]=BLOCKS.AIR;
+}}}}
 // Trees
 if((biome==0||biome==1||biome==3)&&Math.random()<0.08&&x>2&&x<WORLD_W-2){
 var th=Math.floor(Math.random()*3)+4;
@@ -239,14 +261,34 @@ if(biome==2&&Math.random()<0.04&&x>0&&x<WORLD_W-1){
 var ch=Math.floor(Math.random()*2)+2;
 for(var cy=1;cy<=ch;cy++)if(h-cy>=0)world[x][h-cy]=BLOCKS.CACTUS;
 }
-// Caves
+// Enhanced Caves - multi-layer with varied shapes/sizes at different depths
 for(var y=h+3;y<WORLD_H-2;y++){
-var cv=octaveNoise((x+seed)*0.08,3)*0.5+octaveNoise((y+seed)*0.08,3)*0.5;
-if(cv>0.4)world[x][y]=BLOCKS.AIR;
+var depth=(y-h)/(WORLD_H-h);
+var cv1=octaveNoise((x+seed)*0.08,3)*0.5+octaveNoise((y+seed)*0.08,3)*0.5;
+var cv2=octaveNoise((x+seed+500)*0.04,4)*0.6+octaveNoise((y+seed+500)*0.04,4)*0.4;
+var cv3=octaveNoise((x+seed+1000)*0.15,2)*0.5+octaveNoise((y+seed+1000)*0.12,2)*0.5;
+var thresh1=0.42-depth*0.08;
+var thresh2=0.38-depth*0.12;
+var thresh3=0.48-depth*0.05;
+var isCave=false;
+if(depth<0.3&&cv3>thresh3)isCave=true;
+if(depth>=0.2&&depth<0.7&&cv1>thresh1)isCave=true;
+if(depth>=0.5&&cv2>thresh2)isCave=true;
+if(isCave&&world[x][y]!=BLOCKS.BEDROCK){
+var wasStone=(world[x][y]==BLOCKS.STONE);
+world[x][y]=BLOCKS.AIR;
+if(wasStone){
+var wallOre=octaveNoise((x+seed+2000)*0.2,2)*0.5+octaveNoise((y+seed+2000)*0.2,2)*0.5;
+if(y>h+16&&wallOre>0.7){if(x>0&&world[x-1][y]==BLOCKS.STONE)world[x-1][y]=BLOCKS.DIAMOND_ORE;if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.STONE)world[x+1][y]=BLOCKS.DIAMOND_ORE;}
+else if(y>h+12&&wallOre>0.6){if(x>0&&world[x-1][y]==BLOCKS.STONE)world[x-1][y]=BLOCKS.GOLD_ORE;if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.STONE)world[x+1][y]=BLOCKS.GOLD_ORE;}
+else if(y>h+6&&wallOre>0.5){if(x>0&&world[x-1][y]==BLOCKS.STONE)world[x-1][y]=BLOCKS.IRON_ORE;if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.STONE)world[x+1][y]=BLOCKS.IRON_ORE;}
+else if(y>h+2&&wallOre>0.4){if(x>0&&world[x-1][y]==BLOCKS.STONE)world[x-1][y]=BLOCKS.COAL_ORE;if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.STONE)world[x+1][y]=BLOCKS.COAL_ORE;}
+}
+}
 }
 // Water in low areas
 for(var y=0;y<WORLD_H;y++){
-if(y>=SEA&&y<=SEA+2&&world[x][y]==BLOCKS.AIR)world[x][y]=BLOCKS.WATER;
+if(y==SEA&&world[x][y]==BLOCKS.AIR)world[x][y]=BLOCKS.WATER;
 }
 }
 // Find spawn
@@ -311,19 +353,19 @@ function mineBlock(){
 var bx=cursorX,by=cursorY;
 if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)return;
 var b=world[bx][by];if(b==BLOCKS.FURNACE){openFurnace();return;}
-if(b==BLOCKS.CHEST){openChest(bx,by);return;}
+if(b==BLOCKS.BED){if(isNight){isNight=false;dayTimer=0;showGameMsg('Sleeping...');player.spawnX=bx*TILE;player.spawnY=(by-1)*TILE;}else{showGameMsg('Can only sleep at night');}return;}if(b==BLOCKS.CHEST){openChest(bx,by);return;}
 if(b==BLOCKS.AIR||b==BLOCKS.WATER||b==BLOCKS.BEDROCK)return;
 var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);
 var dist=Math.abs(bx-px)+Math.abs(by-py);if(dist>5)return;
-var req=MINE_REQ[b];if(req){var tl=getToolTierLevel(getHeldItem().id);if(tl<req){var tierNames={1:'wooden',2:'stone',3:'iron',4:'diamond'};showGameMsg('Need '+tierNames[req]+' pickaxe!');return;}}
+var req=MINE_REQ[b];if(req){var hid=getHeldItem().id;var isPick=(hid>=101&&hid<=104);var tl=isPick?getToolTierLevel(hid):0;if(tl<req){var tierNames={1:'wooden',2:'stone',3:'iron',4:'diamond'};showGameMsg('Need '+tierNames[req]+' pickaxe!');return;}}
 var hard=HARDNESS[b]||1;
-var held=getHeldItem();var power=1;
-if(held.id>=100&&TOOL_POWER[held.id])power=TOOL_POWER[held.id];
+var held=getHeldItem();var power=1;var heldId=held.id;var isPickHeld=(heldId>=101&&heldId<=104);var isAxeHeld=(heldId==109||heldId==117||heldId==118||heldId==119);var isShovelHeld=(heldId==110||heldId==120||heldId==121||heldId==122);
+if(held.id>=100&&TOOL_POWER[held.id])power=TOOL_POWER[held.id];TOOL_POWER[126]=2;TOOL_POWER[131]=3;TOOL_POWER[132]=5;TOOL_POWER[133]=7;var STONE_BLOCKS=[3,7,8,9,10,12,18];var WOOD_BLOCKS=[5,6,11];var DIRT_BLOCKS=[1,2,4,20,21,25];if(isPickHeld&&STONE_BLOCKS.indexOf(b)>=0)power*=1.5;else if(isAxeHeld&&WOOD_BLOCKS.indexOf(b)>=0)power*=1.5;else if(isShovelHeld&&DIRT_BLOCKS.indexOf(b)>=0)power*=1.5;
 if(gameMode=="creative"){miningProgress=hard;}else{miningProgress+=power*0.05;}
 if(miningProgress>=hard){
 miningProgress=0;
 if(held.id>=101&&held.id<=122)useToolDur(player.selectedSlot);
-var drop=DROPS[b]!==undefined?DROPS[b]:b;if(b==BLOCKS.LEAVES&&Math.random()<0.1)drop=123;
+var drop=DROPS[b]!==undefined?DROPS[b]:b;if(b==BLOCKS.LEAVES&&Math.random()<0.1)drop=123;var oreReq=MINE_REQ[b];if(oreReq&&!isPickHeld)drop=0;if(oreReq&&isPickHeld){var pickTier=getToolTierLevel(heldId);if(pickTier<oreReq)drop=0;}
 if(drop!=0)addItem(drop,1);
 world[bx][by]=BLOCKS.AIR;
 // Particles
@@ -369,6 +411,7 @@ var r=Math.random();var type=r<0.33?'creeper':r<0.66?'zombie':'skeleton';
 var ehp=type=='zombie'?20:type=='creeper'?20:12;
 entities.push({type:type,x:ex*TILE,y:ey,vx:0,vy:0,w:6,h:12,hp:ehp,maxHp:ehp,dir:1,atkTimer:0,color:type=='zombie'?'#0a0':type=='creeper'?'#0f0':'#ddd',fuseTimer:0,fuseActive:false,fuseMax:90});
 }
+function spawnCaveEnemies(){if(gameMode=='creative')return;var caveMobs=0;for(var i=0;i<entities.length;i++){if(entities[i].type=='cave_spider'||entities[i].type=='cave_skeleton')caveMobs++;}if(caveMobs>=4)return;if(Math.random()>0.008)return;var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);if(py<SEA)return;var spots=[];for(var attempts=0;attempts<10;attempts++){var sx=px+Math.floor(Math.random()*30-15),sy=py+Math.floor(Math.random()*20-10);if(sx<1||sx>=WORLD_W-1||sy<SEA||sy>=WORLD_H-2)continue;if(world[sx][sy]!=BLOCKS.AIR)continue;if(world[sx][sy+1]==BLOCKS.AIR||world[sx][sy+1]==BLOCKS.WATER)continue;var oreVal=0;for(var dx=-3;dx<=3;dx++){for(var dy=-3;dy<=3;dy++){var nx=sx+dx,ny=sy+dy;if(nx>=0&&nx<WORLD_W&&ny>=0&&ny<WORLD_H){var b=world[nx][ny];if(b==BLOCKS.DIAMOND_ORE)oreVal+=5;else if(b==BLOCKS.GOLD_ORE)oreVal+=4;else if(b==BLOCKS.IRON_ORE)oreVal+=3;else if(b==BLOCKS.COAL_ORE)oreVal+=1;}}}var spawnChance=0.15+oreVal*0.04;if(Math.random()<spawnChance)spots.push({x:sx,y:sy,val:oreVal});}if(spots.length==0)return;spots.sort(function(a,b){return b.val-a.val;});var numSpawn=Math.min(spots.length,1+Math.floor(Math.random()*2));for(var s=0;s<numSpawn;s++){if(caveMobs+s>=4)break;var sp=spots[s];var type=Math.random()<0.5?'cave_spider':'cave_skeleton';var hp=type=='cave_spider'?6:8;var col=type=='cave_spider'?'#4a2810':'#d4c9a8';entities.push({type:type,x:sp.x*TILE,y:(sp.y-1)*TILE,vx:0,vy:0,w:type=='cave_spider'?8:6,h:type=='cave_spider'?5:12,hp:hp,maxHp:hp,dir:1,atkTimer:0,color:col,fuseTimer:0,fuseActive:false,fuseMax:90});}}function spawnSheep(){if(entities.length>=8)return;if(Math.random()>0.003)return;var ex=player.x/TILE+((Math.random()>0.5?1:-1)*(8+Math.random()*10));ex=Math.floor(ex);if(ex<0||ex>=WORLD_W)return;var ey=0;for(var y=0;y<WORLD_H;y++){if(isSolid(ex,y)){ey=(y-1)*TILE;break;}}if(ey<=0)return;entities.push({type:'sheep',x:ex*TILE,y:ey,vx:0,vy:0,w:10,h:10,hp:8,maxHp:8,dir:1,atkTimer:0,passive:true});}
 function updateEntities(dt){
 for(var i=entities.length-1;i>=0;i--){
 var e=entities[i];
@@ -405,16 +448,16 @@ if(e.fuseTimer>0)e.fuseTimer-=0.5;
 }
 }
 // Attack player (non-creeper)
-if(e.type!='creeper'){
+if(e.type!='creeper'&&!e.passive){
 var adx=Math.abs(player.x-e.x),ady=Math.abs(player.y-e.y);
 if(adx<10&&ady<14&&gameMode=='survival'){
 e.atkTimer++;
-if(e.atkTimer>30){e.atkTimer=0;if(gameMode!='creative'){player.hp-=e.type=='zombie'?3:2;}if(player.hp<=0)gameOver();}
+if(e.atkTimer>30){e.atkTimer=0;if(gameMode!='creative'){var eDmg=e.type=='zombie'?3:(e.type=='cave_spider'||e.type=='cave_skeleton')?1:2;player.hp-=eDmg;}}if(player.hp<=0)gameOver();}
 }
 }
 // Remove if too far or dead
 if(e.hp<=0||Math.abs(e.x-player.x)>300*TILE){
-if(e.hp<=0){var loot=e.type=='zombie'?ITEMS.RAW_PORK:e.type=='creeper'?ITEMS.COAL:ITEMS.STICK;addItem(loot,Math.floor(Math.random()*2)+1);}
+if(e.hp<=0){var loot;if(e.type=='sheep'){addItem(ITEMS.WOOL,Math.floor(Math.random()*2)+1);loot=0;}else if(e.type=='cave_spider'){loot=ITEMS.STRING;addItem(loot,Math.floor(Math.random()*2)+1);}else if(e.type=='cave_skeleton'||e.type=='skeleton'){loot=ITEMS.BONE;addItem(loot,Math.floor(Math.random()*2)+1);}else{loot=e.type=='zombie'?ITEMS.ROTTEN_FLESH:e.type=='creeper'?ITEMS.COAL:ITEMS.STICK;addItem(loot,Math.floor(Math.random()*2)+1);}}
 entities.splice(i,1);
 }
 }
@@ -442,10 +485,13 @@ if(t<0.75)return'rgb(10,10,30)';
 if(t<0.9){var f=(t-0.75)/0.15;return'rgb('+Math.floor(10+245*f)+','+Math.floor(10+60*f)+','+Math.floor(30+70*f)+')';}
 var f=(t-0.9)/0.1;return'rgb('+Math.floor(255-155*f)+','+Math.floor(70+100*f)+','+Math.floor(100+155*f)+')';
 }
-function gameOver(){if(gameMode=='creative'){player.hp=player.maxHp;return;}gameState='dead';}
+function gameOver(){if(gameMode=='creative'){player.hp=player.maxHp;return;}deathX=player.x;deathY=player.y;dropItemsOnDeath();gameState='dead';}
+function dropItemsOnDeath(){var PICK=[101,102,103,104],AXE=[109,117,118,119];var TL={101:1,102:2,103:3,104:4,109:1,117:2,118:3,119:4};var bestPick=-1,bestPickTier=0,bestAxe=-1,bestAxeTier=0;for(var i=0;i<36;i++){var s=inventory[i];if(s.id==0||s.count==0)continue;if(PICK.indexOf(s.id)>=0&&TL[s.id]>bestPickTier){bestPickTier=TL[s.id];bestPick=i;}if(AXE.indexOf(s.id)>=0&&TL[s.id]>bestAxeTier){bestAxeTier=TL[s.id];bestAxe=i;}}for(var i=0;i<36;i++){var s=inventory[i];if(s.id==0||s.count==0)continue;var isPick=PICK.indexOf(s.id)>=0,isAxe=AXE.indexOf(s.id)>=0;if(i==bestPick&&isPick){if(s.count>1){droppedItems.push({id:s.id,count:s.count-1,x:deathX+(Math.random()*20-10),y:deathY-8,vx:(Math.random()-0.5)*2,vy:-2-Math.random()*2,grounded:false,life:36000});s.count=1;}continue;}if(i==bestAxe&&isAxe){if(s.count>1){droppedItems.push({id:s.id,count:s.count-1,x:deathX+(Math.random()*20-10),y:deathY-8,vx:(Math.random()-0.5)*2,vy:-2-Math.random()*2,grounded:false,life:36000});s.count=1;}continue;}droppedItems.push({id:s.id,count:s.count,x:deathX+(Math.random()*20-10),y:deathY-8,vx:(Math.random()-0.5)*2,vy:-2-Math.random()*2,grounded:false,life:36000});s.id=0;s.count=0;}showGameMsg('Items dropped at death location!');}
+function updateDroppedItems(dt){for(var i=droppedItems.length-1;i>=0;i--){var d=droppedItems[i];d.life-=dt;if(d.life<=0){droppedItems.splice(i,1);continue;}if(!d.grounded){d.vy+=0.3*dt;d.x+=d.vx*dt;d.y+=d.vy*dt;var bx=Math.floor(d.x/TILE),by=Math.floor((d.y+4)/TILE);if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H&&world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER){d.y=by*TILE-4;d.vy=0;d.vx=0;d.grounded=true;}}if(gameState=='playing'){var dx=player.x+player.w/2-d.x,dy=player.y+player.h/2-d.y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<14){if(addItem(d.id,d.count)){droppedItems.splice(i,1);showGameMsg('Picked up '+(INAMES[d.id]||BNAMES[d.id]||'item')+' x'+d.count);}}}}}
+function renderDroppedItems(ctx,camX,camY){for(var i=0;i<droppedItems.length;i++){var d=droppedItems[i];var sx=d.x-camX,sy=d.y-camY;if(sx<-10||sx>W+10||sy<-10||sy>H+10)continue;var bob=Math.sin(Date.now()/300+i)*2;var col=ICOLORS[d.id]||BCOLORS[d.id]||'#fff';ctx.fillStyle=col;ctx.fillRect(sx-2,sy-2+bob,5,5);ctx.strokeStyle='#fff';ctx.lineWidth=0.5;ctx.strokeRect(sx-2,sy-2+bob,5,5);if(d.life<3600){ctx.globalAlpha=d.life/3600;ctx.fillStyle=col;ctx.fillRect(sx-2,sy-2+bob,5,5);ctx.globalAlpha=1;}}}
 
 // === TOOL TIERS & DURABILITY ===
-var TOOL_TIER={101:'wood',102:'stone',103:'iron',104:'diamond',105:'wood',106:'stone',107:'iron',108:'diamond',109:'wood',117:'stone',118:'iron',119:'diamond',110:'wood',120:'stone',121:'iron',122:'diamond'};
+var TOOL_TIER={101:'wood',102:'stone',103:'iron',104:'diamond',105:'wood',106:'stone',107:'iron',108:'diamond',109:'wood',117:'stone',118:'iron',119:'diamond',110:'wood',120:'stone',121:'iron',122:'diamond',131:'stone',132:'iron',133:'diamond'};
 var TIER_COLORS={wood:'#C4A05A',stone:'#888',iron:'#D8D8D8',diamond:'#5CF0EE'};
 var TIER_DUR={wood:60,stone:132,iron:251,diamond:1562};
 var toolDurability={};
@@ -454,7 +500,7 @@ function useToolDur(slot){var k='s'+slot;if(!toolDurability[k])return;toolDurabi
 function initToolDur(slot,id){var t=TOOL_TIER[id];if(t){var k='s'+slot;toolDurability[k]={cur:TIER_DUR[t],max:TIER_DUR[t]};}}
 
 var TIER_LEVEL={wood:1,stone:2,iron:3,diamond:4};
-var MINE_REQ={3:1,7:1,8:2,9:3,10:3,12:1};
+var MINE_REQ={18:1,3:1,7:1,8:2,9:3,10:3,12:1};
 function getToolTierLevel(id){var t=TOOL_TIER[id];return t?TIER_LEVEL[t]:0;}
 // === TOOL SPRITE RENDERER ===
 var spriteCache={};
@@ -494,6 +540,7 @@ else if(player.vy>0)player.fallDist+=player.vy/TILE;
 
 
 var gameMsg='',gameMsgTimer=0;
+var droppedItems=[];var deathX=0,deathY=0;
 function showGameMsg(txt){gameMsg=txt;gameMsgTimer=90;}
 // === FURNACE SMELTING ===
 function openFurnace(){
@@ -603,7 +650,7 @@ var waterTimer=0;
 function updateWaterFlow(dt){
 waterTimer+=dt;if(waterTimer<30)return;waterTimer=0;
 for(var x=0;x<WORLD_W;x++){for(var y=0;y<WORLD_H-1;y++){
-if(world[x][y]==BLOCKS.WATER){
+if(world[x][y]==BLOCKS.WATER&&y<=SEA+4){
 if(world[x][y+1]==BLOCKS.AIR)world[x][y+1]=BLOCKS.WATER;
 if(x>0&&world[x-1][y]==BLOCKS.AIR&&world[x][y+1]!=BLOCKS.AIR)world[x-1][y]=BLOCKS.WATER;
 if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.AIR&&world[x][y+1]!=BLOCKS.AIR)world[x+1][y]=BLOCKS.WATER;
@@ -731,7 +778,7 @@ ctx.fillStyle='#f00';ctx.fillRect(ex,ey-5,e.w,2);
 ctx.fillStyle='#ff0';ctx.fillRect(ex,ey-5,Math.floor(e.w*fp),2);
 }
 }else{
-ctx.fillStyle=e.color;ctx.fillRect(ex,ey,e.w,e.h);
+if(e.type=='cave_spider'){ctx.fillStyle='#4a2810';ctx.fillRect(ex,ey+1,8,3);ctx.fillStyle='#f00';ctx.fillRect(ex+2,ey+1,1,1);ctx.fillRect(ex+5,ey+1,1,1);}else if(e.type=='cave_skeleton'){ctx.fillStyle='#d4c9a8';ctx.fillRect(ex+1,ey,4,4);ctx.fillStyle='#bbb';ctx.fillRect(ex,ey+4,6,8);ctx.fillStyle='#222';ctx.fillRect(ex+2,ey+1,1,1);ctx.fillRect(ex+4,ey+1,1,1);}else{ctx.fillStyle=e.color;ctx.fillRect(ex,ey,e.w,e.h);}
 }
 ctx.fillStyle='#f00';ctx.fillRect(ex,ey-3,e.w*(e.hp/e.maxHp),2);
 }
@@ -751,7 +798,7 @@ if(hpBar)hpBar.style.display='none';
 if(hunBar)hunBar.style.display='none';
 }else{
 if(hpBar){hpBar.style.display='block';hpBar.innerHTML='';for(var h=0;h<10;h++){hpBar.innerHTML+=(h<Math.ceil(player.hp/2))?'\u2764':'\u2661';}}
-if(hunBar){hunBar.style.display='none';for(var h=0;h<10;h++){hunBar.innerHTML+=(h<Math.ceil(player.hunger/2))?'\ud83c\udf56':'\u2022';}}
+if(hunBar){hunBar.style.display='none';hunBar.innerHTML='';}
 }
 var hb=document.getElementById('inv-bar');hb.innerHTML='';
 for(var i=0;i<9;i++){
@@ -900,18 +947,18 @@ requestAnimationFrame(gameLoop);
 function restartGame(){
 gameState='playing';player.hp=player.maxHp;
 entities=[];particles=[];miningProgress=0;
-inventory=[];for(var i=0;i<36;i++)inventory.push({id:0,count:0});
-generateWorld();
+var isRespawn=(world&&world.length>0&&gameMode!='creative');
+if(!isRespawn){inventory=[];for(var i=0;i<36;i++)inventory.push({id:0,count:0});generateWorld();
 if(gameMode=='creative'){for(var b=1;b<=28;b++)addItem(b,64);for(var t=100;t<=120;t++)addItem(t,64);}
-else{addItem(ITEMS.WOOD_PICK,1);addItem(ITEMS.WOOD_AXE,1);}
+else{addItem(ITEMS.WOOD_PICK,1);addItem(ITEMS.WOOD_AXE,1);}}else{player.x=WORLD_W/2*TILE;for(var y=0;y<WORLD_H;y++){if(world[Math.floor(player.x/TILE)][y]!=BLOCKS.AIR&&world[Math.floor(player.x/TILE)][y]!=BLOCKS.WATER){player.y=(y-2)*TILE;break;}}}
 }
 function resumeGame(){gameState='playing';document.getElementById('pause-menu').style.display='none';}
 function gameLoop(now){
 dt=(now-lastTime)/16.67;if(dt>3)dt=3;lastTime=now;
 if(gameState=='playing'){
-updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updateCrops(dt);updateDayNight();spawnEnemies();updateEntities(dt);
+updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updateCrops(dt);updateDayNight();spawnEnemies();spawnCaveEnemies();spawnSheep();updateEntities(dt);updateAutoLock();updateAutoCombat(dt);updateDroppedItems(dt);
 if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
-render();renderAutoLock();ctx.restore();renderHUD();
+render();renderDroppedItems(ctx,camX,camY);renderAutoLock();renderAutoCombat(ctx,camX,camY);ctx.restore();renderHUD();
 if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
 
 }
