@@ -112,6 +112,17 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <div id="pause-menu"><h3>PAUSED</h3><div class="menu-btn" onclick="resumeGame()">Resume</div><div class="menu-btn" onclick="openSaveScreen()">Save Game</div><div class="menu-btn" onclick="openLoadScreen()">Load Game</div>
 <div id="chest-screen"><h3>Chest Storage</h3><div id="chest-slots"></div><h3>Your Inventory</h3><div id="chest-inv"></div></div>
 <script>
+
+/* R1 COMPATIBILITY POLYFILLS */
+if(!window.performance){window.performance={now:function(){return Date.now();}};}
+if(!window.requestAnimationFrame){window.requestAnimationFrame=function(cb){return window.setTimeout(function(){cb(Date.now());},16);};}
+if(!Array.prototype.forEach){Array.prototype.forEach=function(fn,ctx){for(var i=0;i<this.length;i++){if(i in this)fn.call(ctx,this[i],i,this);}};}
+if(!Array.prototype.map){Array.prototype.map=function(fn,ctx){var r=[];for(var i=0;i<this.length;i++){r.push(fn.call(ctx,this[i],i,this));}return r;};}
+if(!Array.prototype.filter){Array.prototype.filter=function(fn,ctx){var r=[];for(var i=0;i<this.length;i++){if(fn.call(ctx,this[i],i,this))r.push(this[i]);}return r;};}
+if(!Array.prototype.indexOf){Array.prototype.indexOf=function(v,f){f=f||0;for(var i=f;i<this.length;i++){if(this[i]===v)return i;}return -1;};}
+if(!Object.keys){Object.keys=function(o){var r=[];for(var k in o){if(o.hasOwnProperty(k))r.push(k);}return r;};}
+window.onerror=function(msg,url,line,col,err){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;width:240px;background:red;color:white;font-size:8px;z-index:99999;padding:4px;word-wrap:break-word;';d.textContent='ERR L'+line+': '+msg;document.body.appendChild(d);return false;};
+/* END POLYFILLS */
 // === GAME CONSTANTS ===
 var W=240,H=260,TILE=8,COLS=30,ROWS=32;
 var CHUNK_W=16,WORLD_W=128,WORLD_H=40,SEA=20;
@@ -1014,21 +1025,21 @@ document.addEventListener('touchstart',function(e){
 e.preventDefault();var t=e.touches[0];touchStartX=t.clientX;touchStartY=t.clientY;touchActive=true;
 var sx=t.clientX,sy=t.clientY;var ux=(sx-W/2)/zoomLevel+W/2;var uy=(sy-H/2)/zoomLevel+H/2;var tx=Math.floor((ux+camX)/TILE),ty=Math.floor((uy+camY)/TILE);
 if(tx>=0&&tx<WORLD_W&&ty>=0&&ty<WORLD_H){cursorX=tx;cursorY=ty;}
-},{passive:false});
+},false);
 document.addEventListener('touchmove',function(e){
 e.preventDefault();if(!touchActive)return;var t=e.touches[0];
 var dx=t.clientX-touchStartX,dy=t.clientY-touchStartY;
 if(Math.abs(dx)>8){keys.left=dx<0;keys.right=dx>0;}
 if(dy<-15){keys.up=true;}
-},{passive:false});
+},false);
 document.addEventListener('touchend',function(e){
 e.preventDefault();touchActive=false;keys.left=false;keys.right=false;keys.up=false;keys.down=false;
-},{passive:false});
+},false);
 // === GAME LOOP ===
 function startGame(mode){
 gameMode=mode;gameState='playing';weatherState='clear';weatherTimer=0;weatherDuration=WEATHER_MIN_CLEAR+Math.floor(Math.random()*(WEATHER_MAX_CLEAR-WEATHER_MIN_CLEAR));weatherIntensity=0;targetIntensity=0;raindrops=[];lightningFlash=0;
 document.getElementById('title').style.display='none';
-canvas=document.getElementById('game');ctx=canvas.getContext('2d');
+canvas=document.getElementById('game');if(!canvas){document.body.innerHTML='<div style="background:red;color:white;padding:10px">Canvas not found</div>';return;}ctx=canvas.getContext('2d');if(!ctx){document.body.innerHTML='<div style="background:red;color:white;padding:10px">2D context failed</div>';return;}
 
 
 generateWorld();
@@ -1172,7 +1183,7 @@ function doLoadGame(name){
 if(loadGame(name)){
 document.getElementById('load-screen').style.display='none';
 document.getElementById('title').style.display='none';
-if(!canvas){canvas=document.getElementById('game');ctx=canvas.getContext('2d');}
+if(!canvas){canvas=document.getElementById('game');if(!canvas){document.body.innerHTML='<div style="background:red;color:white;padding:10px">Canvas not found</div>';return;}ctx=canvas.getContext('2d');if(!ctx){document.body.innerHTML='<div style="background:red;color:white;padding:10px">2D context failed</div>';return;}}
 gameState='playing';
 document.getElementById('save-btn-hud').style.display='block';
 lastTime=performance.now();
