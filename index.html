@@ -399,7 +399,7 @@ for(var i=entities.length-1;i>=0;i--){try{
 var e=entities[i];
 if(!e||typeof e!=='object'||typeof e.hp!=='number'||isNaN(e.hp)){entities.splice(i,1);continue;}
 // Skeleton sunlight burning
-if(!isNight&&(e.type=='skeleton'||e.type=='cave_skeleton')){var etx=Math.floor(e.x/TILE);var ety=Math.floor(e.y/TILE);var surfY=(heightMap[etx]!=null?heightMap[etx]:SEA);if(ety<=surfY){e.hp-=2;e.onFire=true;if(Math.random()<0.3){particles.push({x:e.x+Math.random()*e.w,y:e.y+Math.random()*e.h,vx:(Math.random()-0.5)*2,vy:-Math.random()*2,life:20,color:'#f80'});}}else{e.onFire=false;}}else{e.onFire=false;}
+if(!isNight&&e.type!=='creeper'&&(e.type=='skeleton'||e.type=='cave_skeleton'||e.type=='zombie')){var etx=Math.floor(e.x/TILE);var ety=Math.floor(e.y/TILE);var surfY=(heightMap[etx]!=null?heightMap[etx]:SEA);if(ety<=surfY){e.hp-=0.3;e.onFire=true;if(Math.random()<0.3){particles.push({x:e.x+Math.random()*e.w,y:e.y+Math.random()*e.h,vx:(Math.random()-0.5)*2,vy:-Math.random()*2,life:20,color:'#f80'});}}else{e.onFire=false;}}else{e.onFire=false;}
 // Move toward player
 var dx=player.x-e.x;
 var spd=e.type=='creeper'?0.6:e.type=='skeleton'?0.7:e.type=='cave_spider'?1.0:e.type=='cave_skeleton'?0.7:0.8;
@@ -426,21 +426,28 @@ e.atkTimer=(e.atkTimer||0)+dt;
 if(e.atkTimer>2){e.atkTimer=0;
 if(typeof arrows!=='undefined')arrows.push({x:e.x,y:e.y+4,vx:sdx/sdist*3,vy:sdy/sdist*3,life:120,fromEnemy:true});
 }}}
-// Creeper fuse
+// Creeper fuse and hit-and-retreat behavior
 if(e.type=='creeper'){
 var cdist=Math.abs(player.x-e.x);
 if(!e.fuseMax)e.fuseMax=45;
+if(!e.creeperHitCount)e.creeperHitCount=0;
+if(!e.retreatTimer)e.retreatTimer=0;
+// After being hit, creeper becomes enraged - fuse speeds up
+var fuseSpeed=e.wasHit?2:1;
+if(e.wasHit){e.retreatTimer=(e.retreatTimer||0)+1;if(e.retreatTimer>90){e.wasHit=false;e.retreatTimer=0;}}
 if(cdist<2.5*TILE){
 if(!e.fuseActive){e.fuseActive=true;e.fuseTimer=0;}
-e.fuseTimer=(e.fuseTimer||0)+1;
+e.fuseTimer=(e.fuseTimer||0)+fuseSpeed;
 if(e.fuseTimer>=e.fuseMax){creeperExplode(e);entities.splice(i,1);continue;}
 }else if(cdist<5*TILE&&e.fuseActive){
-e.fuseTimer=(e.fuseTimer||0)+1;
+e.fuseTimer=(e.fuseTimer||0)+fuseSpeed;
 if(e.fuseTimer>=e.fuseMax){creeperExplode(e);entities.splice(i,1);continue;}
 }else{
 e.fuseActive=false;e.fuseTimer=0;
 if(e.fuselight)e.fuselight=false;
 }
+// Creeper charges player when enraged (after being hit)
+if(e.wasHit&&cdist>2*TILE){var cdir=player.x>e.x?1:-1;e.vx=cdir*1.2;}
 }
 // Melee attack player
 if(!e.passive&&e.type!=='creeper'&&e.type!=='skeleton'&&e.type!=='cave_skeleton'){
@@ -471,7 +478,7 @@ var e=entities[i];
 if(!e||typeof e!=='object'||typeof e.hp!=='number')continue;
 var adx=Math.abs(player.x-e.x),ady=Math.abs(player.y-e.y);
 if(adx<range&&ady<range){
-e.hp-=dmg;e.vx=(e.x>player.x?2:-2);e.vy=-2;
+e.hp-=dmg;e.vx=(e.x>player.x?2:-2);e.vy=-2;if(e.type=='creeper'){e.wasHit=true;e.creeperHitCount=(e.creeperHitCount||0)+1;e.retreatTimer=0;e.fuseActive=true;e.fuseTimer=Math.max(e.fuseTimer||0,e.fuseMax*0.3);}
 showDamageNumber(dmg,e.x,e.y);break;
 }}
 }
