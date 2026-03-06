@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -176,7 +176,7 @@ var world=[],camX=0,camY=0;
 var player={x:128,y:0,vx:0,vy:0,w:6,h:12,onGround:false,hp:20,maxHp:20,air:10,selectedSlot:0,mining:0,mineX:-1,mineY:-1,dir:1,attacking:0,hunger:20,maxHunger:20,hungerTimer:0,flying:false,fallDist:0,lastY:0};
 var inventory=[];for(var i=0;i<36;i++)inventory.push({id:0,count:0});
 var hotbar=9,cursorX=15,cursorY=15;
-var dayTime=0,dayLength=12000,isNight=false;
+var dayTime=0,dayLength=12000,isNight=false;var heightMap=[];
 // === WEATHER SYSTEM ===
 var weatherState='clear',weatherTimer=0,weatherDuration=0,weatherTransition=0;
 var raindrops=[],lightningFlash=0,lightningTimer=0,thunderTimer=0;
@@ -198,7 +198,7 @@ world=[];
 for(var x=0;x<WORLD_W;x++){world[x]=[];for(var y=0;y<WORLD_H;y++)world[x][y]=BLOCKS.AIR;}
 var seed=Math.random()*10000;
 for(var x=0;x<WORLD_W;x++){
-var h=Math.floor(SEA-8+octaveNoise((x+seed)*0.05,4)*6);if(h<4)h=4;if(h>=WORLD_H-1)h=WORLD_H-2;
+var h=Math.floor(10+octaveNoise((x+seed)*0.03,4)*5);if(h<4)h=4;if(h>=WORLD_H-1)h=WORLD_H-2;heightMap[x]=h;
 var biome=getBiome(x,seed);
 // Surface
 for(var y=h;y<WORLD_H;y++){
@@ -222,79 +222,13 @@ else if(y>h+2&&oreN<0.09)world[x][y]=BLOCKS.COAL_ORE;
 else if(oreN<0.04)world[x][y]=BLOCKS.GRAVEL;
 }else{world[x][y]=BLOCKS.BEDROCK;}
 }
-// Enhanced worm caves - varied sizes at different depths
-var caveTypes=[{n:4,minY:3,maxY:12,rad:1,len:20,spd:1.2},{n:5,minY:8,maxY:25,rad:2,len:35,spd:1.5},{n:4,minY:20,maxY:40,rad:3,len:50,spd:1.8}];
-for(var ct=0;ct<caveTypes.length;ct++){
-var cType=caveTypes[ct];
-for(var ci=0;ci<cType.n;ci++){
-var cx=Math.floor(Math.random()*WORLD_W),cy=Math.floor(SEA+cType.minY+Math.random()*(cType.maxY-cType.minY));
-var cdir=Math.random()*Math.PI*2,clen=cType.len+Math.floor(Math.random()*20);
-var crad=cType.rad;
-for(var cs=0;cs<clen;cs++){
-var bx=Math.floor(cx),by=Math.floor(cy);
-var r=crad+(Math.sin(cs*0.3)*0.5);
-for(var dx=-Math.ceil(r);dx<=Math.ceil(r);dx++){for(var dy=-Math.ceil(r);dy<=Math.ceil(r);dy++){
-if(dx*dx+dy*dy>r*r)continue;
-var nx=bx+dx,ny=by+dy;
-if(nx>=0&&nx<WORLD_W&&ny>=0&&ny<WORLD_H&&world[nx][ny]!=BLOCKS.BEDROCK&&world[nx][ny]!=BLOCKS.WATER){
-if(world[nx][ny]==BLOCKS.STONE&&Math.random()<0.15){var oreD=(ny-SEA)/WORLD_H;if(oreD>0.4&&Math.random()<0.02)world[nx][ny]=BLOCKS.DIAMOND_ORE;else if(oreD>0.3&&Math.random()<0.04)world[nx][ny]=BLOCKS.GOLD_ORE;else if(oreD>0.15&&Math.random()<0.08)world[nx][ny]=BLOCKS.IRON_ORE;else world[nx][ny]=BLOCKS.COAL_ORE;}
-else world[nx][ny]=BLOCKS.AIR;}}}
-cx+=Math.cos(cdir)*cType.spd;cy+=Math.sin(cdir)*0.8;cdir+=Math.random()*0.6-0.3;}}}
-// Large caverns at deep levels for exploration
-for(var lc=0;lc<3;lc++){
-var lcx=20+Math.floor(Math.random()*(WORLD_W-40));
-var lcy=Math.floor(SEA+25+Math.random()*15);
-var lcw=6+Math.floor(Math.random()*8);
-var lch=4+Math.floor(Math.random()*5);
-for(var lx=-lcw;lx<=lcw;lx++){for(var ly=-lch;ly<=lch;ly++){
-var ldist=(lx*lx)/(lcw*lcw)+(ly*ly)/(lch*lch);
-if(ldist>1)continue;
-var lnx=lcx+lx,lny=lcy+ly;
-if(lnx>=0&&lnx<WORLD_W&&lny>=0&&lny<WORLD_H&&world[lnx][lny]!=BLOCKS.BEDROCK&&world[lnx][lny]!=BLOCKS.WATER){
-if(ldist>0.7&&world[lnx][lny]==BLOCKS.STONE){var oreR=Math.random();if(oreR<0.03)world[lnx][lny]=BLOCKS.DIAMOND_ORE;else if(oreR<0.08)world[lnx][lny]=BLOCKS.GOLD_ORE;else if(oreR<0.18)world[lnx][lny]=BLOCKS.IRON_ORE;else if(oreR<0.3)world[lnx][lny]=BLOCKS.COAL_ORE;}
-else world[lnx][lny]=BLOCKS.AIR;
-}}}}
-// Trees
-if((biome==0||biome==1||biome==3)&&Math.random()<0.08&&x>2&&x<WORLD_W-2){
-var th=Math.floor(Math.random()*3)+4;
-for(var ty=1;ty<=th;ty++)if(h-ty>=0)world[x][h-ty]=BLOCKS.WOOD;
-for(var lx=-2;lx<=2;lx++)for(var ly=-2;ly<=0;ly++){
-var wx=x+lx,wy=h-th+ly;
-if(wx>=0&&wx<WORLD_W&&wy>=0&&wy<WORLD_H&&world[wx][wy]==BLOCKS.AIR)world[wx][wy]=BLOCKS.LEAVES;
-}
-}
-// Cactus in desert
-if(biome==2&&Math.random()<0.04&&x>0&&x<WORLD_W-1){
-var ch=Math.floor(Math.random()*2)+2;
-for(var cy=1;cy<=ch;cy++)if(h-cy>=0)world[x][h-cy]=BLOCKS.CACTUS;
-}
-// Enhanced Caves - multi-layer with varied shapes/sizes at different depths
-for(var y=h+3;y<WORLD_H-2;y++){
-var depth=(y-h)/(WORLD_H-h);
-var cv1=octaveNoise((x+seed)*0.08,3)*0.5+octaveNoise((y+seed)*0.08,3)*0.5;
-var cv2=octaveNoise((x+seed+500)*0.04,4)*0.6+octaveNoise((y+seed+500)*0.04,4)*0.4;
-var cv3=octaveNoise((x+seed+1000)*0.15,2)*0.5+octaveNoise((y+seed+1000)*0.12,2)*0.5;
-var thresh1=0.42-depth*0.08;
-var thresh2=0.38-depth*0.12;
-var thresh3=0.48-depth*0.05;
-var isCave=false;
-if(depth<0.3&&cv3>thresh3)isCave=true;
-if(depth>=0.2&&depth<0.7&&cv1>thresh1)isCave=true;
-if(depth>=0.5&&cv2>thresh2)isCave=true;
-if(isCave&&world[x][y]!=BLOCKS.BEDROCK){
-var wasStone=(world[x][y]==BLOCKS.STONE);
-world[x][y]=BLOCKS.AIR;
-if(wasStone){
-var wallOre=octaveNoise((x+seed+2000)*0.2,2)*0.5+octaveNoise((y+seed+2000)*0.2,2)*0.5;
-if(y>h+16&&wallOre>0.7){if(x>0&&world[x-1][y]==BLOCKS.STONE)world[x-1][y]=BLOCKS.DIAMOND_ORE;if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.STONE)world[x+1][y]=BLOCKS.DIAMOND_ORE;}
-else if(y>h+12&&wallOre>0.6){if(x>0&&world[x-1][y]==BLOCKS.STONE)world[x-1][y]=BLOCKS.GOLD_ORE;if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.STONE)world[x+1][y]=BLOCKS.GOLD_ORE;}
-else if(y>h+6&&wallOre>0.5){if(x>0&&world[x-1][y]==BLOCKS.STONE)world[x-1][y]=BLOCKS.IRON_ORE;if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.STONE)world[x+1][y]=BLOCKS.IRON_ORE;}
-else if(y>h+2&&wallOre>0.4){if(x>0&&world[x-1][y]==BLOCKS.STONE)world[x-1][y]=BLOCKS.COAL_ORE;if(x<WORLD_W-1&&world[x+1][y]==BLOCKS.STONE)world[x+1][y]=BLOCKS.COAL_ORE;}
-}
-}
+// Simple caves
+for(var y=h+4;y<WORLD_H-2;y++){
+var cv=noise((x+seed*3)*0.15+y*0.15);
+if(cv>0.92&&world[x][y]==BLOCKS.STONE){world[x][y]=BLOCKS.AIR;}
 }
 // Small ponds only - use noise to decide if this column gets a pond
-var pondChance=noise((x+seed)*0.3);if(pondChance>0.85){for(var wy=h;wy<h+2&&wy<WORLD_H;wy++){if(world[x][wy]==BLOCKS.AIR)world[x][wy]=BLOCKS.WATER;}}
+var pondChance=noise((x+seed)*0.3);if(pondChance>0.88){for(var wy=h;wy<h+3&&wy<WORLD_H;wy++){if(world[x][wy]==BLOCKS.GRASS||world[x][wy]==BLOCKS.DIRT)world[x][wy]=BLOCKS.SAND;}if(h+1<WORLD_H)world[x][h]=BLOCKS.WATER;}
 
 
 }
@@ -332,6 +266,12 @@ else player.vx*=0.6;
 if(keys.up&&player.onGround)player.vy=jumpF;
 player.vy+=grav;
 if(player.vy>maxFall)player.vy=maxFall;
+// Push player out of solid blocks
+var ptx1=Math.floor(player.x/TILE),ptx2=Math.floor((player.x+player.w-1)/TILE);
+var pty1=Math.floor(player.y/TILE),pty2=Math.floor((player.y+player.h-1)/TILE);
+var stuck=false;
+for(var tx=ptx1;tx<=ptx2;tx++){for(var ty=pty1;ty<=pty2;ty++){if(isSolidForPlayer(tx,ty)){stuck=true;break;}}if(stuck)break;}
+if(stuck){var pushed=false;for(var sy=pty1-1;sy>=0;sy--){var clear=true;for(var tx=ptx1;tx<=ptx2;tx++){if(isSolidForPlayer(tx,sy)||isSolidForPlayer(tx,sy+1)){clear=false;break;}}if(clear){player.y=sy*TILE;player.vy=0;pushed=true;break;}}if(!pushed){for(var sy=pty2+1;sy<WORLD_H-1;sy++){var clear=true;for(var tx=ptx1;tx<=ptx2;tx++){if(isSolidForPlayer(tx,sy)||isSolidForPlayer(tx,sy+1)){clear=false;break;}}if(clear){player.y=sy*TILE;player.vy=0;break;}}}}
 // X collision
 var nx=player.x+player.vx;
 var tx1=Math.floor(nx/TILE),tx2=Math.floor((nx+player.w-1)/TILE);
@@ -448,7 +388,7 @@ var ex=(player.x/TILE+((Math.random()>0.5?1:-1)*(15+Math.random()*10)));
 var ey=0;ex=Math.floor(ex);if(ex<0||ex>=WORLD_W)return;
 for(var y=0;y<WORLD_H;y++){if(isSolid(ex,y)){ey=(y-2)*TILE;break;}}
 if(ey<=0)return;
-var r=Math.random();var type=r<0.33?'creeper':r<0.66?'zombie':'skeleton';
+var r=Math.random();var type=isNight?(r<0.33?'creeper':r<0.66?'zombie':'skeleton'):(r<0.5?'creeper':'zombie');
 var ehp=type=='zombie'?20:type=='creeper'?20:12;
 entities.push({type:type,x:ex*TILE,y:ey,vx:0,vy:0,w:6,h:12,hp:ehp,maxHp:ehp,dir:1,atkTimer:0,color:type=='zombie'?'#0a0':type=='creeper'?'#0f0':'#ddd',fuseTimer:0,fuseActive:false,fuseMax:90});
 }
@@ -458,6 +398,8 @@ var toRemove=[];
 for(var i=entities.length-1;i>=0;i--){try{
 var e=entities[i];
 if(!e||typeof e!=='object'||typeof e.hp!=='number'||isNaN(e.hp)){entities.splice(i,1);continue;}
+// Skeleton sunlight burning
+if(!isNight&&(e.type=='skeleton'||e.type=='cave_skeleton')){var etx=Math.floor(e.x/TILE);var ety=Math.floor(e.y/TILE);var surfY=(heightMap[etx]!=null?heightMap[etx]:SEA);if(ety<=surfY){e.hp-=2;e.onFire=true;if(Math.random()<0.3){particles.push({x:e.x+Math.random()*e.w,y:e.y+Math.random()*e.h,vx:(Math.random()-0.5)*2,vy:-Math.random()*2,life:20,color:'#f80'});}}else{e.onFire=false;}}else{e.onFire=false;}
 // Move toward player
 var dx=player.x-e.x;
 var spd=e.type=='creeper'?0.6:e.type=='skeleton'?0.7:e.type=='cave_spider'?1.0:e.type=='cave_skeleton'?0.7:0.8;
@@ -757,7 +699,7 @@ world[x][y+1]=b;world[x][y]=BLOCKS.AIR;}
 }}}
 // === WATER FLOW ===
 var waterTimer=0;
-function updateWaterFlow(dt){
+function updateWaterFlow(dt){return;
 waterTimer+=dt;if(waterTimer<30)return;waterTimer=0;
 for(var x=0;x<WORLD_W;x++){for(var y=0;y<WORLD_H-1;y++){
 if(world[x][y]==BLOCKS.WATER&&y<=SEA+4){
@@ -854,8 +796,8 @@ var sx=Math.floor(camX/TILE),sy=Math.floor(camY/TILE);
 var ex=sx+Math.ceil(W/TILE)+1,ey=sy+Math.ceil(H/TILE)+1;
 for(var x=sx;x<ex&&x<WORLD_W;x++){for(var y=sy;y<ey&&y<WORLD_H;y++){
 if(x<0||y<0)continue;
-var b=world[x][y];if(b==BLOCKS.AIR)continue;
 var dx=x*TILE-camX,dy=y*TILE-camY;
+var b=world[x][y];if(b==BLOCKS.AIR){var surfH=(heightMap[x]!=null?heightMap[x]:SEA);if(y>surfH){ctx.fillStyle='#111';ctx.fillRect(dx,dy,TILE,TILE);}continue;}
 ctx.fillStyle=BCOLORS[b]||'#f0f';
 if(b==BLOCKS.WATER){ctx.globalAlpha=0.5;ctx.fillRect(dx,dy,TILE,TILE);
 if(b==BLOCKS.DOOR){ctx.fillStyle=typeof doorStates!=='undefined'&&doorStates[x+','+y]?'#c4a060':'#8B4513';ctx.fillRect(dx+2,dy,TILE-4,TILE);ctx.fillStyle='#654321';ctx.fillRect(dx+TILE/2-1,dy+TILE/3,2,2);}
@@ -915,9 +857,9 @@ ctx.fillStyle='#f00';ctx.fillRect(ex,ey-5,e.w,2);
 ctx.fillStyle='#ff0';ctx.fillRect(ex,ey-5,Math.floor(e.w*fp),2);
 }
 }else{
-if(e.type=='cave_spider'){ctx.fillStyle='#4a2810';ctx.fillRect(ex,ey+1,8,3);ctx.fillStyle='#f00';ctx.fillRect(ex+2,ey+1,1,1);ctx.fillRect(ex+5,ey+1,1,1);}else if(e.type=='cave_skeleton'){ctx.fillStyle='#d4c9a8';ctx.fillRect(ex+1,ey,4,4);ctx.fillStyle='#bbb';ctx.fillRect(ex,ey+4,6,8);ctx.fillStyle='#222';ctx.fillRect(ex+2,ey+1,1,1);ctx.fillRect(ex+4,ey+1,1,1);}else{ctx.fillStyle=e.color;ctx.fillRect(ex,ey,e.w,e.h);}
+if(e.type=='cave_spider'){ctx.fillStyle='#4a2810';ctx.fillRect(ex,ey+1,8,3);ctx.fillStyle='#f00';ctx.fillRect(ex+2,ey+1,1,1);ctx.fillRect(ex+5,ey+1,1,1);}else if(e.type=='cave_skeleton'){ctx.fillStyle='#d4c9a8';ctx.fillRect(ex+1,ey,4,4);ctx.fillStyle='#bbb';ctx.fillRect(ex,ey+4,6,8);ctx.fillStyle='#222';ctx.fillRect(ex+2,ey+1,1,1);ctx.fillRect(ex+4,ey+1,1,1);}else if(e.type=='zombie'){ctx.fillStyle='#0a0';ctx.fillRect(ex+1,ey,4,4);ctx.fillStyle='#080';ctx.fillRect(ex,ey+4,6,4);ctx.fillStyle='#050';ctx.fillRect(ex+1,ey+4,1,4);ctx.fillRect(ex+4,ey+4,1,4);ctx.fillStyle='#060';ctx.fillRect(ex,ey+8,2,4);ctx.fillRect(ex+4,ey+8,2,4);ctx.fillStyle='#000';ctx.fillRect(ex+2,ey+1,1,1);ctx.fillRect(ex+4,ey+1,1,1);ctx.fillStyle='#030';ctx.fillRect(ex+2,ey+3,2,1);}else if(e.type=='skeleton'){ctx.fillStyle='#ddd';ctx.fillRect(ex+1,ey,4,4);ctx.fillStyle='#bbb';ctx.fillRect(ex+1,ey+4,4,4);ctx.fillStyle='#999';ctx.fillRect(ex+2,ey+5,2,1);ctx.fillRect(ex+2,ey+7,2,1);ctx.fillStyle='#ddd';ctx.fillRect(ex,ey+8,2,4);ctx.fillRect(ex+4,ey+8,2,4);ctx.fillStyle='#222';ctx.fillRect(ex+2,ey+1,1,1);ctx.fillRect(ex+4,ey+1,1,1);ctx.fillStyle='#444';ctx.fillRect(ex+2,ey+3,2,1);}else if(e.type=='sheep'){ctx.fillStyle='#f0f0f0';ctx.fillRect(ex,ey+2,6,6);ctx.fillStyle='#aaa';ctx.fillRect(ex+1,ey,4,3);ctx.fillStyle='#f0f0f0';ctx.fillRect(ex,ey+8,2,4);ctx.fillRect(ex+4,ey+8,2,4);ctx.fillStyle='#222';ctx.fillRect(ex+2,ey+1,1,1);ctx.fillRect(ex+4,ey+1,1,1);}else{ctx.fillStyle=e.color;ctx.fillRect(ex,ey,e.w,e.h);}
 }
-ctx.fillStyle='#f00';ctx.fillRect(ex,ey-3,e.w*((e.hp||0)/(e.maxHp||1)),2);
+if(e.onFire){ctx.fillStyle='#f80';ctx.fillRect(ex,ey,e.w,e.h);ctx.fillStyle='#ff0';ctx.fillRect(ex+1,ey+2,2,3);ctx.fillRect(ex+e.w-3,ey+1,2,4);}ctx.fillStyle='#f00';ctx.fillRect(ex,ey-3,e.w*((e.hp||0)/(e.maxHp||1)),2);
 }
 // Particles
 for(var i=particles.length-1;i>=0;i--){
@@ -1123,7 +1065,7 @@ function getSaves(){try{var s=localStorage.getItem('r1mc_saves');return s?JSON.p
 function putSaves(obj){localStorage.setItem('r1mc_saves',JSON.stringify(obj));}
 function saveGame(name){
 var saves=getSaves();
-var state={player:{x:player.x,y:player.y,vx:player.vx,vy:player.vy,hp:player.hp,maxHp:player.maxHp,hunger:player.hunger,maxHunger:player.maxHunger,hungerTimer:player.hungerTimer,air:player.air,selectedSlot:player.selectedSlot,dir:player.dir,flying:player.flying,fallDist:player.fallDist,lastY:player.lastY,onGround:player.onGround},inventory:JSON.parse(JSON.stringify(inventory)),world:world.map(function(col){return col.slice();}),gameMode:gameMode,camX:camX,camY:camY,dayTime:dayTime,dayLength:dayLength,isNight:isNight,cursorX:cursorX,cursorY:cursorY,entities:JSON.parse(JSON.stringify(entities)),timestamp:Date.now()};
+var state={player:{x:player.x,y:player.y,vx:player.vx,vy:player.vy,hp:player.hp,maxHp:player.maxHp,hunger:player.hunger,maxHunger:player.maxHunger,hungerTimer:player.hungerTimer,air:player.air,selectedSlot:player.selectedSlot,dir:player.dir,flying:player.flying,fallDist:player.fallDist,lastY:player.lastY,onGround:player.onGround},inventory:JSON.parse(JSON.stringify(inventory)),world:world.map(function(col){return col.slice();}),gameMode:gameMode,camX:camX,camY:camY,dayTime:dayTime,dayLength:dayLength,isNight:isNight,cursorX:cursorX,cursorY:cursorY,entities:JSON.parse(JSON.stringify(entities)),heightMap:heightMap.slice(),timestamp:Date.now()};
 saves[name]=state;
 putSaves(saves);
 return true;
@@ -1150,6 +1092,7 @@ camX=s.camX||0;camY=s.camY||0;
 dayTime=s.dayTime||0;dayLength=s.dayLength||12000;isNight=s.isNight||false;
 cursorX=s.cursorX||15;cursorY=s.cursorY||15;
 entities=s.entities?JSON.parse(JSON.stringify(s.entities)):[];
+if(s.heightMap){heightMap=s.heightMap.slice();}else{heightMap=[];for(var hx=0;hx<WORLD_W;hx++){for(var hy=0;hy<WORLD_H;hy++){if(world[hx][hy]!=BLOCKS.AIR&&world[hx][hy]!=BLOCKS.WATER){heightMap[hx]=hy;break;}}}}
 particles=[];
 miningProgress=0;miningTarget={x:-1,y:-1};
 return true;
@@ -1231,3 +1174,4 @@ showGameMsg('Loaded: '+name);
 <button id="save-btn-hud" onclick="openSaveScreen()" style="display:none;">SAVE</button>
 </body>
 </html>
+
