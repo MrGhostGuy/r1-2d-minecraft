@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -224,11 +224,11 @@ else if(oreN<0.04)world[x][y]=BLOCKS.GRAVEL;
 }
 // Simple caves
 for(var y=h+4;y<WORLD_H-2;y++){
-var cv=noise((x+seed*3)*0.15+y*0.15);
-if(cv>0.92&&world[x][y]==BLOCKS.STONE){world[x][y]=BLOCKS.AIR;}
+var cv=interpNoise((x+seed*3)*0.09+y*0.09);
+if(cv>0.75&&world[x][y]==BLOCKS.STONE){world[x][y]=BLOCKS.AIR;}
 }
 // Small ponds only - use noise to decide if this column gets a pond
-var pondChance=noise((x+seed)*0.3);if(pondChance>0.88){for(var wy=h;wy<h+3&&wy<WORLD_H;wy++){if(world[x][wy]==BLOCKS.GRASS||world[x][wy]==BLOCKS.DIRT)world[x][wy]=BLOCKS.SAND;}if(h+1<WORLD_H)world[x][h]=BLOCKS.WATER;}
+var pondChance=noise((x+seed)*0.3);if(pondChance>0.88){for(var wy=h;wy<h+3&&wy<WORLD_H;wy++){if(world[x][wy]==BLOCKS.GRASS||world[x][wy]==BLOCKS.DIRT||world[x][wy]==BLOCKS.SNOW||world[x][wy]==BLOCKS.SAND)world[x][wy]=BLOCKS.SAND;}if(h+1<WORLD_H)world[x][h]=BLOCKS.WATER;}
 
 
 }
@@ -236,7 +236,7 @@ var pondChance=noise((x+seed)*0.3);if(pondChance>0.88){for(var wy=h;wy<h+3&&wy<W
 player.x=WORLD_W/2*TILE;
 for(var y=0;y<WORLD_H;y++){if(world[Math.floor(player.x/TILE)][y]!=BLOCKS.AIR&&world[Math.floor(player.x/TILE)][y]!=BLOCKS.WATER){player.y=(y-2)*TILE;break;}}
 }
-function getBiome(x,seed){var b=octaveNoise((x+seed)*0.005,2);if(b<-0.3)return 2;if(b<0)return 0;if(b<0.3)return 1;if(b<0.6)return 3;return 4;}
+function getBiome(x,seed){var b=octaveNoise((x+seed)*0.005,2);if(b<0.15)return 2;if(b<0.35)return 0;if(b<0.55)return 1;if(b<0.8)return 3;return 0;}
 // === PLAYER PHYSICS ===
 var doorStates={};
 function isDoorBlock(x,y){if(x<0||x>=WORLD_W||y<0||y>=WORLD_H)return false;return world[x][y]===BLOCKS.DOOR;}
@@ -478,16 +478,24 @@ showDamageNumber(dmg,e.x,e.y);break;
 // === DAY-NIGHT CYCLE ===
 function updateDayNight(){
 dayTime=(dayTime+1)%dayLength;
-isNight=dayTime>dayLength/2;
+isNight=(dayTime/dayLength>0.79||dayTime/dayLength<0.21);
 }
 function getSkyColor(){
 var t=dayTime/dayLength;
-if(t<0.25)return'rgb(100,170,255)';
-if(t<0.4){var f=(t-0.25)/0.15;return'rgb('+Math.floor(100+155*f)+','+Math.floor(170-100*f)+','+Math.floor(255-155*f)+')';}
-if(t<0.5){var f=(t-0.4)/0.1;return'rgb('+Math.floor(255-245*f)+','+Math.floor(70-60*f)+','+Math.floor(100-90*f)+')';}
-if(t<0.75)return'rgb(10,10,30)';
-if(t<0.9){var f=(t-0.75)/0.15;return'rgb('+Math.floor(10+245*f)+','+Math.floor(10+60*f)+','+Math.floor(30+70*f)+')';}
-var f=(t-0.9)/0.1;return'rgb('+Math.floor(255-155*f)+','+Math.floor(70+100*f)+','+Math.floor(100+155*f)+')';
+// Night: dark blue-black (12AM - 5AM, t=0 to ~0.21)
+if(t<0.21)return'rgb(10,10,30)';
+// Sunrise transition (5AM-7AM, t=0.21 to 0.29)
+if(t<0.29){var f=(t-0.21)/0.08;return'rgb('+Math.floor(10+230*f)+','+Math.floor(10+120*f)+','+Math.floor(30+70*f)+')';}
+// Sunrise peak (7AM, t=0.29): rgb(240,130,100) -> transition to blue
+if(t<0.375){var f=(t-0.29)/0.085;return'rgb('+Math.floor(240-140*f)+','+Math.floor(130+40*f)+','+Math.floor(100+155*f)+')';}
+// Daytime blue sky (9AM-5PM, t=0.375 to 0.71)
+if(t<0.71)return'rgb(100,170,255)';
+// Sunset transition (5PM-7PM, t=0.71 to 0.79)
+if(t<0.79){var f=(t-0.71)/0.08;return'rgb('+Math.floor(100+140*f)+','+Math.floor(170-40*f)+','+Math.floor(255-155*f)+')';}
+// Sunset peak (7PM, t=0.79): rgb(240,130,100) -> transition to dark
+if(t<0.875){var f=(t-0.79)/0.085;return'rgb('+Math.floor(240-230*f)+','+Math.floor(130-120*f)+','+Math.floor(100-70*f)+')';}
+// Night: dark blue-black (9PM-12AM, t=0.875 to 1.0)
+return'rgb(10,10,30)';
 }
 // === WEATHER UPDATE & RENDER ===
 function updateWeather(){
@@ -797,9 +805,9 @@ var ex=sx+Math.ceil(W/TILE)+1,ey=sy+Math.ceil(H/TILE)+1;
 for(var x=sx;x<ex&&x<WORLD_W;x++){for(var y=sy;y<ey&&y<WORLD_H;y++){
 if(x<0||y<0)continue;
 var dx=x*TILE-camX,dy=y*TILE-camY;
-var b=world[x][y];if(b==BLOCKS.AIR){var surfH=(heightMap[x]!=null?heightMap[x]:SEA);if(y>surfH){ctx.fillStyle='#111';ctx.fillRect(dx,dy,TILE,TILE);}continue;}
+ctx.globalAlpha=1.0;var b=world[x][y];if(b==BLOCKS.AIR){var surfH=(heightMap[x]!=null?heightMap[x]:SEA);if(y>surfH){ctx.fillStyle='#111';ctx.fillRect(dx,dy,TILE,TILE);}continue;}
 ctx.fillStyle=BCOLORS[b]||'#f0f';
-if(b==BLOCKS.WATER){ctx.globalAlpha=0.5;ctx.fillRect(dx,dy,TILE,TILE);
+if(b==BLOCKS.WATER){ctx.fillStyle='#3366CC';ctx.globalAlpha=0.5;ctx.fillRect(dx,dy,TILE,TILE);ctx.globalAlpha=1.0;
 if(b==BLOCKS.DOOR){ctx.fillStyle=typeof doorStates!=='undefined'&&doorStates[x+','+y]?'#c4a060':'#8B4513';ctx.fillRect(dx+2,dy,TILE-4,TILE);ctx.fillStyle='#654321';ctx.fillRect(dx+TILE/2-1,dy+TILE/3,2,2);}
 if(world[x][y]==BLOCKS.TORCH){ctx.fillStyle="rgba(255,200,50,0.3)";ctx.fillRect((x-1)*TILE*zoom-camX,(y-1)*TILE*zoom-camY,3*TILE*zoom,3*TILE*zoom);}ctx.globalAlpha=1;}
 else if(b==BLOCKS.TORCH){ctx.fillStyle='#8B5A2B';ctx.fillRect(dx+3,dy+2,2,6);ctx.fillStyle='#FFD700';ctx.fillRect(dx+2,dy,4,3);}
