@@ -2,18 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P" rel="stylesheet">
 <meta name="viewport" content="width=240,height=282,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>2D Minecraft R1</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{width:240px;height:282px;overflow:hidden;background:#000;font-family:monospace;}
+html,body{margin:0;padding:0;width:240px;height:282px;overflow:hidden;background:#000;font-family:monospace;}
 canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #title{position:absolute;top:0;left:0;width:240px;height:282px;background:#4a8f3f;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;color:#fff;text-align:center;}
-#title h1{font-family:'Press Start 2P',monospace;font-size:11px;color:#5c3;text-shadow:2px 2px #000,1px 1px #2a5f1f;margin-bottom:8px;letter-spacing:1px;}
-#title h2{font-family:'Press Start 2P',monospace;font-size:6px;color:#fff;margin-bottom:4px;text-shadow:1px 1px #000;}
-#title .credit{font-family:'Press Start 2P',monospace;font-size:5px;color:#fd0;margin-bottom:12px;text-shadow:1px 1px #000;}
-#title .menu-btn{background:#555;color:#fff;border:1px solid #888;padding:8px 12px;font-size:6px;margin:4px;cursor:pointer;font-family:'Press Start 2P',monospace;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,0.3);user-select:none;-webkit-user-select:none;}
+#title h1{font-family:monospace;font-size:11px;color:#5c3;text-shadow:2px 2px #000,1px 1px #2a5f1f;margin-bottom:8px;letter-spacing:1px;}
+#title h2{font-family:monospace;font-size:6px;color:#fff;margin-bottom:4px;text-shadow:1px 1px #000;}
+#title .credit{font-family:monospace;font-size:5px;color:#fd0;margin-bottom:12px;text-shadow:1px 1px #000;}
+#title .menu-btn{background:#555;color:#fff;border:1px solid #888;padding:8px 12px;font-size:6px;margin:4px;cursor:pointer;font-family:monospace;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,0.3);user-select:none;-webkit-user-select:none;}
 #title .menu-btn:hover{background:#777;}
 #hud{position:absolute;top:0;left:0;width:240px;pointer-events:none;z-index:10;}
 #inv-bar{position:absolute;bottom:0;left:0;width:240px;height:22px;background:rgba(0,0,0,0.7);display:flex;z-index:10;}
@@ -112,6 +111,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <div id="pause-menu"><h3>PAUSED</h3><div class="menu-btn" onclick="resumeGame()">Resume</div><div class="menu-btn" onclick="openSaveScreen()">Save Game</div><div class="menu-btn" onclick="openLoadScreen()">Load Game</div>
 <div id="chest-screen"><h3>Chest Storage</h3><div id="chest-slots"></div><h3>Your Inventory</h3><div id="chest-inv"></div></div>
 <script>
+if(!window.performance)window.performance={};if(!performance.now)performance.now=function(){return Date.now();};
+if(!Array.isArray)Array.isArray=function(a){return Object.prototype.toString.call(a)==='[object Array]';};
 // === GAME CONSTANTS ===
 var W=240,H=282,TILE=8,COLS=30,ROWS=32;
 var CHUNK_W=16,WORLD_W=128,WORLD_H=40,SEA=20;
@@ -1167,7 +1168,7 @@ div.innerHTML='<span class="slot-name">'+k+'</span><span class="slot-delete" onc
 div.onclick=function(){doLoadGame(k);};div.ontouchend=function(e){e.preventDefault();doLoadGame(k);};
 list.appendChild(div);})(keys[i]);}
 }
-function confirmDeleteSave(name){if(confirm('Delete save: '+name+'?')){deleteSave(name);renderLoadSlots();}}
+function confirmDeleteSave(name){deleteSave(name);renderLoadSlots();}
 function doLoadGame(name){
 if(loadGame(name)){
 document.getElementById('load-screen').style.display='none';
@@ -1181,11 +1182,73 @@ showGameMsg('Loaded: '+name);
 }
 }
 
+let gameLoopId = null;
+let _currentMapName = "default";
 
+
+
+function quitToMenu() {
+  if (gameLoopId) { clearInterval(gameLoopId); gameLoopId = null; }
+  ["save-screen","load-screen","craft-screen","map-select-screen"].forEach(function(id){ var e=document.getElementById(id); if(e) e.style.display="none"; });
+  document.getElementById("title").style.display = "flex";
+}
+
+function saveAndQuit() {
+  saveGame();
+  quitToMenu();
+}
+
+function showMapSelect() {
+  var ms = document.getElementById("map-select-screen");
+  ms.style.display = "flex";
+  var list = ms.querySelector(".map-list");
+  list.innerHTML = "";
+  var maps = JSON.parse(localStorage.getItem("mc_maps") || "[]");
+  maps.forEach(function(name) {
+    var btn = document.createElement("div");
+    btn.className = "menu-btn";
+    btn.textContent = name;
+    btn.onclick = function(){ _currentMapName = name; loadMap(name); ms.style.display="none"; };
+    btn.ontouchend = function(e){ e.preventDefault(); _currentMapName = name; loadMap(name); ms.style.display="none"; };
+    list.appendChild(btn);
+  });
+}
+
+function createNewMap() {
+  var name = "Map_" + Date.now();
+  _currentMapName = name;
+  var maps = JSON.parse(localStorage.getItem("mc_maps") || "[]");
+  if (maps.indexOf(name) === -1) { maps.push(name); localStorage.setItem("mc_maps", JSON.stringify(maps)); }
+  generateWorld();
+  document.getElementById("map-select-screen").style.display = "none";
+  document.getElementById("title").style.display = "none";
+  if (gameLoopId) clearInterval(gameLoopId);
+  gameLoopId = setInterval(gameLoop, 1000/30);
+}
+
+function loadMap(name) {
+  var data = localStorage.getItem("mc_map_" + name);
+  if (data) {
+    var save = JSON.parse(data);
+    if (save.world) world = save.world;
+    if (save.player) { for(var k in save.player) player[k]=save.player[k]; }
+    if (save.inventory) inventory = save.inventory;
+  }
+  document.getElementById("title").style.display = "none";
+  if (gameLoopId) clearInterval(gameLoopId);
+  gameLoopId = setInterval(gameLoop, 1000/30);
+}
 </script>
 <div id="save-screen"><h3>SAVE GAME</h3><input type="text" id="save-name-input" placeholder="Enter save name..." maxlength="20"><div id="save-slots-list"></div><button class="save-menu-btn" onclick="doSaveGame()">Save</button><button class="save-menu-btn cancel" onclick="closeSaveScreen()">Cancel</button></div>
 <div id="load-screen"><h3>LOAD GAME</h3><div id="load-slots-list"></div><button class="save-menu-btn cancel" onclick="closeLoadScreen()" ontouchend="event.preventDefault();closeLoadScreen()">Back</button></div>
 <button id="save-btn-hud" onclick="openSaveScreen()" style="display:none;">SAVE</button>
+
+  <div id="map-select-screen" style="display:none;position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.85);z-index:50;flex-direction:column;align-items:center;justify-content:center;color:#fff;">
+    <h3 style="color:#fff;font-size:10px;margin:4px 0;">Select Map</h3>
+    <div class="map-list" style="overflow-y:auto;max-height:180px;width:90%;"></div>
+    <div class="menu-btn" onclick="createNewMap()" ontouchend="createNewMap()">New Map</div>
+    <div class="menu-btn" onclick="document.getElementById('map-select-screen').style.display='none'" ontouchend="document.getElementById('map-select-screen').style.display='none'">Back</div>
+  </div>
 </body>
 </html>
 
