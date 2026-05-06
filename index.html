@@ -662,7 +662,7 @@ function toggleAutoLock(){autoLockEnabled=!autoLockEnabled;autoLockTarget=null;v
 function getToolType(){var h=getHeldItem();if(!h||h.id<100)return 0;for(var i=0;i<PICK_IDS.length;i++)if(h.id==PICK_IDS[i])return 1;for(var i=0;i<AXE_IDS.length;i++)if(h.id==AXE_IDS[i])return 2;return 0;}
 function findAutoLockTarget(){if(!autoLockEnabled)return null;var tt=getToolType();if(tt==0)return null;var targets=tt==1?ORE_BLOCKS:WOOD_BLOCKS;var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);var best=null,bestScore=-1;for(var dx=-AUTO_LOCK_RANGE;dx<=AUTO_LOCK_RANGE;dx++){for(var dy=-2;dy<=2;dy++){var bx=px+dx,by=py+dy;if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)continue;var b=world[bx][by];var isTarget=false;for(var t=0;t<targets.length;t++)if(b==targets[t]){isTarget=true;break;}if(!isTarget)continue;var dist=Math.abs(dx)+Math.abs(dy);var priority=tt==1?(ORE_PRIORITY[b]||1):2;var score=priority*100-dist*10;if(score>bestScore){bestScore=score;best={x:bx,y:by,block:b,dist:dist};}}}return best;}
 function findFirstBlockInPath(px,py,tx,ty){var dx=tx-px,dy=ty-py;var steps=Math.max(Math.abs(dx),Math.abs(dy));if(steps===0)return null;var sx=dx/steps,sy=dy/steps;for(var i=1;i<=steps;i++){var cx=Math.round(px+sx*i),cy=Math.round(py+sy*i);if(cx<0||cx>=WORLD_W||cy<0||cy>=WORLD_H)break;if(cx===tx&&cy===ty)return null;var b=world[cx][cy];if(b!==BLOCKS.AIR&&b!==BLOCKS.WATER&&b!==BLOCKS.BEDROCK&&b!==BLOCKS.TORCH&&b!==BLOCKS.LADDER){return{x:cx,y:cy,block:b};}}return null;}
-function updateAutoLock(){if(!autoLockEnabled||gameState!='playing')return;autoLockPulse=(autoLockPulse+0.05)%6.28;if(autoLockTarget&&world[autoLockTarget.x]&&world[autoLockTarget.x][autoLockTarget.y]===0){autoLockTarget=null;miningProgress=0;}var newTarget=findAutoLockTarget();if(newTarget){autoLockTarget=newTarget;var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);var obstruction=findFirstBlockInPath(px,py,newTarget.x,newTarget.y);if(obstruction){cursorX=obstruction.x;cursorY=obstruction.y;}else{cursorX=newTarget.x;cursorY=newTarget.y;}var sd=document.getElementById('autolock-status');sd.className='active';var bname='Block';if(newTarget.block==10)bname='DIAMOND';else if(newTarget.block==9)bname='GOLD';else if(newTarget.block==8)bname='IRON';else if(newTarget.block==7)bname='COAL';else if(newTarget.block==3)bname='STONE';else if(newTarget.block==12)bname='COBBLE';else if(newTarget.block==5)bname='WOOD';sd.textContent=bname+' d:'+newTarget.dist;if(autoLockWalk&&newTarget.dist>MINE_RANGE){var tx=newTarget.x*TILE+TILE/2,ty=newTarget.y*TILE;if(player.x<tx-4)keys.left=false,keys.right=true;else if(player.x>tx+4)keys.left=true,keys.right=false;else keys.left=false,keys.right=false;}else if(autoLockWalk&&newTarget.dist<=MINE_RANGE){keys.left=false;keys.right=false;}}else{autoLockTarget=null;var sd=document.getElementById('autolock-status');sd.className='active';sd.textContent='No target';}}function renderAutoLock(){if(!autoLockEnabled||!autoLockTarget||gameState!='playing')return;var t=autoLockTarget;var sx=t.x*TILE-camX,sy=t.y*TILE-camY;var pulse=Math.sin(autoLockPulse)*0.3+0.7;ctx.strokeStyle='rgba(0,255,0,'+pulse+')';ctx.lineWidth=2;ctx.strokeRect(sx-1,sy-1,TILE+2,TILE+2);ctx.strokeStyle='rgba(255,255,0,'+pulse*0.5+')';ctx.lineWidth=1;ctx.strokeRect(sx-3,sy-3,TILE+6,TILE+6);if(t.dist<=MINE_RANGE){ctx.fillStyle='rgba(0,255,0,0.15)';ctx.fillRect(sx,sy,TILE,TILE);}else{ctx.fillStyle='rgba(255,0,0,0.15)';ctx.fillRect(sx,sy,TILE,TILE);var mx=player.x-camX+3,my=player.y-camY-2;ctx.strokeStyle='rgba(255,255,0,0.4)';ctx.setLineDash([2,2]);ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(sx+TILE/2,sy+TILE/2);ctx.stroke();ctx.setLineDash([]);}if(miningProgress>0){var hard=BLOCK_HEALTH[t.block]||HARDNESS[t.block]||1;var pct=miningProgress/hard;ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(sx,sy-4,TILE,3);ctx.fillStyle=pct>0.6?'#0f0':pct>0.3?'#ff0':'#f00';ctx.fillRect(sx,sy-4,TILE*pct,3);}}
+function updateAutoLock(){if(!autoLockEnabled||gameState!='playing')return;autoLockPulse=(autoLockPulse+0.05)%6.28;if(autoLockTarget&&world[autoLockTarget.x]&&world[autoLockTarget.x][autoLockTarget.y]===0){autoLockTarget=null;miningProgress=0;}var newTarget=findAutoLockTarget();if(newTarget){autoLockTarget=newTarget;var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);var obstruction=findFirstBlockInPath(px,py,newTarget.x,newTarget.y);if(obstruction){cursorX=obstruction.x;cursorY=obstruction.y;}else{cursorX=newTarget.x;cursorY=newTarget.y;}var sd=document.getElementById('autolock-status');sd.className='active';var bname='Block';if(newTarget.block==10)bname='DIAMOND';else if(newTarget.block==9)bname='GOLD';else if(newTarget.block==8)bname='IRON';else if(newTarget.block==7)bname='COAL';else if(newTarget.block==3)bname='STONE';else if(newTarget.block==12)bname='COBBLE';else if(newTarget.block==5)bname='WOOD';sd.textContent=bname+' d:'+newTarget.dist;if(autoLockWalk&&newTarget.dist>MINE_RANGE_VAL){var tx=newTarget.x*TILE+TILE/2,ty=newTarget.y*TILE;if(player.x<tx-4)keys.left=false,keys.right=true;else if(player.x>tx+4)keys.left=true,keys.right=false;else keys.left=false,keys.right=false;}else if(autoLockWalk&&newTarget.dist<=MINE_RANGE_VAL){keys.left=false;keys.right=false;}}else{autoLockTarget=null;var sd=document.getElementById('autolock-status');sd.className='active';sd.textContent='No target';}}function renderAutoLock(){if(!autoLockEnabled||!autoLockTarget||gameState!='playing')return;var t=autoLockTarget;var sx=t.x*TILE-camX,sy=t.y*TILE-camY;var pulse=Math.sin(autoLockPulse)*0.3+0.7;ctx.strokeStyle='rgba(0,255,0,'+pulse+')';ctx.lineWidth=2;ctx.strokeRect(sx-1,sy-1,TILE+2,TILE+2);ctx.strokeStyle='rgba(255,255,0,'+pulse*0.5+')';ctx.lineWidth=1;ctx.strokeRect(sx-3,sy-3,TILE+6,TILE+6);if(t.dist<=MINE_RANGE_VAL){ctx.fillStyle='rgba(0,255,0,0.15)';ctx.fillRect(sx,sy,TILE,TILE);}else{ctx.fillStyle='rgba(255,0,0,0.15)';ctx.fillRect(sx,sy,TILE,TILE);var mx=player.x-camX+3,my=player.y-camY-2;ctx.strokeStyle='rgba(255,255,0,0.4)';ctx.setLineDash([2,2]);ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(sx+TILE/2,sy+TILE/2);ctx.stroke();ctx.setLineDash([]);}if(miningProgress>0){var hard=BLOCK_HEALTH[t.block]||HARDNESS[t.block]||1;var pct=miningProgress/hard;ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(sx,sy-4,TILE,3);ctx.fillStyle=pct>0.6?'#0f0':pct>0.3?'#ff0':'#f00';ctx.fillRect(sx,sy-4,TILE*pct,3);}}
 
 // === AUTO-COMBAT SYSTEM ===
 var autoCombatEnabled=true,autoCombatTarget=null,combatCooldown=0,combatPulse=0,dmgNumbers=[],swingAnim=0;
@@ -686,7 +686,7 @@ var cs=document.getElementById('chest-screen');cs.style.display='block';
 renderChestUI();
 }
 function closeChest(){gameState='playing';document.getElementById('chest-screen').style.display='none';window.currentChest=null;}
-var currentChest=null;
+window.currentChest=null;
 function renderChestUI(){
 var key=window.currentChest;if(!key)return;
 var cs=document.getElementById('chest-slots');cs.innerHTML='';
@@ -960,11 +960,7 @@ function craftItem(rec){
 for(var j=0;j<rec.inp.length;j++){if(countItem(rec.inp[j][0])<rec.inp[j][1])return;}
 for(var j=0;j<rec.inp.length;j++){removeItem(rec.inp[j][0],rec.inp[j][1]);}
 addItem(rec.out,rec.cnt);
-<<<<<<< Updated upstream
-if(TOOL_TIER[rec.out]){for(var ti=0;ti<9;ti++){if(player.inv[ti].id==rec.out&&!getToolDur(ti)){initToolDur(ti,rec.out);break;}}}
-=======
 if(TOOL_TIER[rec.out]){for(var ti=0;ti<9;ti++){if(inventory[ti].id==rec.out&&!getToolDur(ti)){initToolDur(ti,rec.out);break;}}}
->>>>>>> Stashed changes
 showCrafting();
 }
 // === CONTROLS ===
@@ -1139,7 +1135,7 @@ if(gameState=='paused'){document.getElementById('pause-menu').style.display='blo
 function doSaveGame(){
 var name=document.getElementById('save-name-input').value.trim();
 if(!name){name='Save '+(Object.keys(getSaves()).length+1);}
-if(saveGame(name)){closeSaveScreen();if(gameState=='paused'){resumeGame();}showGameMsg('Game saved: '+name);}
+if(name&&saveGame(name)){closeSaveScreen();if(gameState=='paused'){resumeGame();}showGameMsg('Game saved: '+name);}else if(!name){showGameMsg('Enter a save name');}
 }
 
 function renderSaveSlots(){
@@ -1206,12 +1202,8 @@ function quitToMenu() {
 }
 
 function saveAndQuit() {
-<<<<<<< Updated upstream
-  saveGame();
-=======
   var name = _currentMapName || 'quicksave';
   saveGame(name);
->>>>>>> Stashed changes
   quitToMenu();
 }
 
