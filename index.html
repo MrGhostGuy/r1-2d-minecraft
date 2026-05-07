@@ -1311,13 +1311,13 @@ function repairTool(){r1Toast('Tools auto-repair on sleep');}
 function torchPlace(){placeBlock();r1Vibrate(20);}
 function useSeeds(){placeBlock();r1Vibrate(20);}
 
-// === VOICE CONTROL ===
-var speechRec=null,speechActive=false,continuousMode=false;
+// === VOICE CONTROL (Push-to-Talk) ===
+var speechRec=null,speechActive=false;
 function initSpeechRecognition(){if(!window.webkitSpeechRecognition&&!window.SpeechRecognition)return null;const SpeechRec=window.webkitSpeechRecognition||window.SpeechRecognition;return new SpeechRec();}
-function toggleVoice(){if(!speechActive){startVoice();document.getElementById('r1-voice-btn').classList.add('active');r1Vibrate(30);}else{stopVoice();document.getElementById('r1-voice-btn').classList.remove('active');r1Vibrate(15);}}
-function startVoice(){if(!speechActive){speechRec=initSpeechRecognition();if(!speechRec){r1Toast('&#128266; No speech support');return;}speechRec.continuous=true;speechRec.interimResults=true;speechRec.lang='en-US';speechActive=true;continuousMode=true;speechRec.onresult=function(e){var said='';var final_transcript='';for(var i=e.resultIndex;i<e.results.length;i++){var t=e.results[i][0].transcript;if(e.results[i].isFinal)final_transcript+=t;else said+=t;}var cmd=(final_transcript||said).toLowerCase().trim();processVoiceCommand(final_transcript.toLowerCase().trim()||null);if(!continuousMode)return;};speechRec.onend=function(){if(continuousMode&&speechActive){try{speechRec.start();}catch(err){stopVoice();}}};speechRec.onerror=function(e){if(e.error==='not-allowed'||e.error==='service-not-allowed'){stopVoice();r1Toast('&#128266; Mic not allowed');}else if(e.error==='no-speech'){}else if(e.error==='aborted'){}else{r1Toast('&#128266; Voice error');}};try{speechRec.start();}catch(err){}}}}function stopVoice(){continuousMode=false;speechActive=false;if(speechRec)try{speechRec.stop();}catch(err){}updateVoiceIndicator(false);}
+function startVoice(){if(speechActive)return;speechRec=initSpeechRecognition();if(!speechRec){r1Toast('No speech support');return;}speechRec.continuous=false;speechRec.interimResults=false;speechRec.lang='en-US';speechActive=true;speechRec.onresult=function(e){if(e.results.length>0){var cmd=e.results[e.results.length-1][0].transcript.toLowerCase().trim();processVoiceCommand(cmd);}};speechRec.onend=function(){stopVoice();};speechRec.onerror=function(e){if(e.error==='not-allowed'||e.error==='service-not-allowed'){r1Toast('Mic not allowed');}stopVoice();};try{speechRec.start();document.getElementById('r1-voice-btn').classList.add('active');updateVoiceIndicator(true);r1Vibrate(30);r1Toast('Listening...');}catch(err){stopVoice();}}
+function stopVoice(){speechActive=false;if(speechRec)try{speechRec.stop();}catch(err){}document.getElementById('r1-voice-btn').classList.remove('active');updateVoiceIndicator(false);}
 function processVoiceCommand(cmd){if(!cmd)return;updateVoiceIndicator(true,cmd);r1Toast('"'+cmd+'"');r1Vibrate(20);var lc=cmd.toLowerCase().replace(/[^a-z\s]/g,'').trim();var words=lc.split(/\s+/);var action=words[0];if(VOICE_MAP[action]){VOICE_MAP[action](words.slice(1));updateVoiceIndicator(true);return;}for(var i=words.length;i>0;i--){var phrase=words.slice(0,i).join(' '');if(VOICE_MAP[phrase]){VOICE_MAP[phrase](words.slice(i));return;}}r1Toast('Unknown: "'+words[0]+'"');updateVoiceIndicator(true);}
-function updateVoiceIndicator(active,cmd){var ind=document.getElementById('r1-voice-indicator');if(!ind)return;if(!speechActive&&!active){ind.classList.remove('show','listening');return;}if(cmd){ind.classList.add('show','listening');ind.textContent='"'+cmd+'"';}else if(speechActive){ind.classList.add('show');ind.classList.remove('listening');ind.textContent='Listening...';}else{ind.classList.remove('show','listening');}}
+function updateVoiceIndicator(active,cmd){var ind=document.getElementById('r1-voice-indicator');if(!ind)return;if(cmd){ind.classList.add('show','listening');ind.textContent='"'+cmd+'"';}else if(speechActive){ind.classList.add('show');ind.classList.remove('listening');ind.textContent='Listening...';}else{ind.classList.remove('show','listening');}}
 var VOICE_MAP={'eat':function(){eatFood();},'attack':function(){attackEntity();},'fight':function(){attackEntity();},'kill':function(){attackEntity();},'craft':function(){toggleCraftingMenu();},'build':function(){toggleCraftingMenu();},'place':function(){placeBlock();},'put':function(){placeBlock();},'sleep':function(){if(gameMode==='survival'&&player.hp<player.maxHp){player.hp=player.maxHp;r1Toast('Slept! HP restored');r1Vibrate(30);}else{r1Toast('Need a bed to sleep');}},'heal':function(){eatFood();},'punch':function(){attackEntity();},'stop':function(){stopVoice();r1Toast('Voice off');},'pause':function(){togglePause();},'menu':function(){togglePause();},'save':function(){if(gameState=='playing'){var name='voice-'+Date.now();saveGame(name);r1Toast('Saved: '+name);}},'quit':function(){quitToMenu();},'respawn':function(){if(gameState=='dead'){restartGame();}else{r1Toast('Already alive');}},'fly':function(){if(gameMode=='creative'){toggleFly();r1Toast(player.flying?'Flying ON':'Flying OFF');}else{r1Toast('Creative only');}},'help':function(){document.getElementById('r1-help').style.display='flex';},
 // Context panel updated each frame via gameLoop
 
@@ -1385,7 +1385,7 @@ function loadMap(name) {
 <div id="r1-hud">
 <div class="rbtn" id="r1-menu-btn" onclick="togglePause()" ontouchend="event.preventDefault();togglePause()">=</div>
 <div id="r1-context-panel"></div>
-<div class="rbtn" id="r1-voice-btn" onclick="toggleVoice()" ontouchend="event.preventDefault();toggleVoice()">&#128266;</div>
+<div class="rbtn" id="r1-voice-btn" onmousedown="startVoice()" ontouchstart="event.preventDefault();startVoice()" onmouseup="stopVoice()" ontouchend="event.preventDefault();stopVoice()">&#128266;</div>
 </div>
 <div id="r1-voice-indicator"></div>
 <div id="r1-toast"></div>
@@ -1396,7 +1396,7 @@ function loadMap(name) {
 <div class="help-line"><span class="help-key">Side Tap</span> = Mine / Place</div>
 <div class="help-line"><span class="help-key">Side Hold</span> = Craft Menu</div>
 <div class="help-line"><span class="help-key">=</span> Menu (Pause/Save/Load/Quit)</div>
-<div class="help-line"><span class="help-key">&#128266;</span> Voice (tap to toggle)</div>
+<div class="help-line"><span class="help-key">&#128266;</span> Voice (hold to speak)</div>
 <div class="help-line" style="color:#0f0;font-size:6px;margin-top:4px;">Context buttons appear automatically!</div>
 <div class="help-line" style="color:#888;font-size:6px;">Hold food &#x2192; [Eat] | Hold sword &#x2192; [Atk]</div>
 <div class="help-line" style="color:#888;font-size:6px;">Hold tool &#x2192; [Fix] | Hold block &#x2192; [Place]</div>
