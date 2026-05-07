@@ -1040,29 +1040,6 @@ if(TOOL_TIER[rec.out]){for(var ti=0;ti<9;ti++){if(inventory[ti].id==rec.out&&!ge
 showCrafting();
 }
 // === CONTROLS ===
-// Keyboard
-document.addEventListener('keydown',function(e){
-if(gameState=='title')return;
-if(gameState=='dead'){restartGame();return;}
-if(e.key=='f'||e.key=='F'){if(gameMode=='creative')toggleFly();else attackEntity();}
-if(e.key=='ArrowDown'||e.key=='s')keys.down=true;
-if(e.key=='ArrowLeft'||e.key=='a')keys.left=true;
-if(e.key=='ArrowRight'||e.key=='d')keys.right=true;
-if(e.key=='ArrowUp'||e.key=='w'||e.key==' ')keys.up=true;
-if(e.key=='q')mineBlock();
-if(e.key=='e')eatFood();
-if(e.key=='r')placeBlock();
-if(e.key=='c')toggleCraftingMenu();
-if(e.key=='Escape'){if(gameState=='crafting')hideCrafting();if(gameState=='furnace')closeFurnace();if(gameState=='chest')closeChest();}
-if(e.key>='1'&&e.key<='9')player.selectedSlot=parseInt(e.key)-1;
-e.preventDefault();
-});
-document.addEventListener('keyup',function(e){
-if(e.key=='ArrowLeft'||e.key=='a')keys.left=false;
-if(e.key=='ArrowRight'||e.key=='d')keys.right=false;
-if(e.key=='ArrowUp'||e.key=='w'||e.key==' ')keys.up=false;
-if(e.key=='ArrowDown'||e.key=='s')keys.down=false;
-});
 // R1 Hardware: Scroll wheel
 window.addEventListener('scrollUp',function(){
 if(gameState=='crafting'){document.getElementById('craft-screen').scrollTop-=30;return;}
@@ -1076,24 +1053,23 @@ if(gameState=='furnace'){document.getElementById('smelt-list').scrollTop+=30;ret
 if(zoomPanelOpen){var s=document.getElementById('zoom-slider');var v=Math.max(0.5,parseFloat(s.value)-0.1);s.value=v;setZoom(v);return;}
 player.selectedSlot=(player.selectedSlot+1)%9;
 });
-// R1 Hardware: Side button
+// R1 Hardware: Side button (single tap = mine/place, double-tap = craft/fly)
+var lastSideClickTime=0;
 window.addEventListener('sideClick',function(){
 if(gameState=='title'||gameState=='paused'){return;}
 if(gameState=='crafting'){hideCrafting();return;}
 if(gameState=='furnace'){closeFurnace();return;}
 if(gameState=='chest'){closeChest();return;}
 if(gameState=='dead'){restartGame();return;}
+// Double-tap detection
+var now=Date.now();
+if(now-lastSideClickTime<400&&gameState=='playing'){
+lastSideClickTime=0;
+if(gameMode=='creative')toggleFly();else showCrafting();
+return;
+}
+lastSideClickTime=now;
 var bx=cursorX,by=cursorY;if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H){if(world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER&&world[bx][by]!=BLOCKS.BEDROCK){mineBlock();}else{var hi=getHeldItem();if(hi.id==126){useHoe(cursorX,cursorY);}else if(hi.id==123&&plantSeed(cursorX,cursorY)){if(gameMode!='creative'){hi.count--;if(hi.count<=0){hi.id=0;hi.count=0;}}}else{placeBlock();}}}
-});
-var sideHoldTimer=null;
-window.addEventListener('longPressStart',function(){
-if(gameState!='playing'){return;}
-sideHoldTimer=setTimeout(function(){
-if(gameState=='playing'){if(gameMode=='creative')toggleFly();else showCrafting();}
-},500);
-});
-window.addEventListener('longPressEnd',function(){
-if(sideHoldTimer){clearTimeout(sideHoldTimer);sideHoldTimer=null;}
 });
 // Touch controls
 var touchMode='move';
@@ -1151,17 +1127,19 @@ ctx.font='8px monospace';ctx.fillText('Tap or press to respawn',55,145);
 }
 requestAnimationFrame(gameLoop);
 }
-// Double-tap to place, single tap to mine on touch
-document.getElementById('game').addEventListener('click',function(e){
+// Touch-to-mine/place on canvas (R1 touch screen)
+document.getElementById('game').addEventListener('touchstart',function(e){
 if(gameState!='playing')return;
+e.preventDefault();
+var t=e.touches[0];
 var rect=canvas.getBoundingClientRect();
-var mx=e.clientX-rect.left,my=e.clientY-rect.top;
+var mx=t.clientX-rect.left,my=t.clientY-rect.top;
 cursorX=Math.floor((mx+camX)/TILE);cursorY=Math.floor((my+camY)/TILE);
 if(cursorX>=0&&cursorX<WORLD_W&&cursorY>=0&&cursorY<WORLD_H){
 if(world[cursorX][cursorY]!=BLOCKS.AIR&&world[cursorX][cursorY]!=BLOCKS.WATER)mineBlock();
 else placeBlock();
 }
-});
+},{passive:false});
 
 // === SAVE/LOAD SYSTEM ===
 function getSaves(){try{var s=localStorage.getItem('r1mc_saves');return s?JSON.parse(s):{};}catch(e){return {};}}
@@ -1225,9 +1203,8 @@ document.getElementById('save-screen').style.display='none';
 if(gameState=='paused'){document.getElementById('pause-menu').style.display='block';}
 }
 function doSaveGame(){
-var name=document.getElementById('save-name-input').value.trim();
-if(!name){name='Save '+(Object.keys(getSaves()).length+1);}
-if(name&&saveGame(name)){closeSaveScreen();if(gameState=='paused'){resumeGame();}showGameMsg('Game saved: '+name);}else if(!name){showGameMsg('Enter a save name');}
+var name='Save '+(Object.keys(getSaves()).length+1);
+if(saveGame(name)){closeSaveScreen();if(gameState=='paused'){resumeGame();}showGameMsg('Game saved: '+name);}
 }
 
 function renderSaveSlots(){
@@ -1292,7 +1269,7 @@ function r1Toast(msg,dur){var t=document.getElementById('r1-toast');if(!t)return
 function togglePause(){if(gameState=='playing'){gameState='paused';document.getElementById('pause-menu').style.display='flex';}else if(gameState=='paused'){resumeGame();}}
 
 // === VIBRATION FEEDBACK ===
-function r1Vibrate(ms){if(navigator.vibrate)navigator.vibrate(ms||30);}
+function r1Vibrate(ms){try{if(navigator.vibrate)navigator.vibrate(ms||30);}catch(e){}}
 
 // === CONTEXT-SENSITIVE ACTION PANEL ===
 var CONTEXT_ACTIONS={
@@ -1358,10 +1335,13 @@ function createNewMap() {
   document.getElementById("map-select-screen").style.display = "none";
   document.getElementById("title").style.display = "none";
   if (gameLoopId) clearInterval(gameLoopId);
-  gameLoopId = setInterval(gameLoop, 1000/30);
+  gameState='playing';
+  document.getElementById('map-select-screen').style.display = 'none';
+  document.getElementById('title').style.display = 'none';
+  if (!canvas) { canvas=document.getElementById('game'); ctx=canvas.getContext('2d'); }
+  lastTime=performance.now();
+  requestAnimationFrame(gameLoop);
 }
-
-function loadMap(name) {
   var data = localStorage.getItem("mc_map_" + name);
   if (data) {
     var save = JSON.parse(data);
@@ -1371,10 +1351,13 @@ function loadMap(name) {
   }
   document.getElementById("title").style.display = "none";
   if (gameLoopId) clearInterval(gameLoopId);
-  gameLoopId = setInterval(gameLoop, 1000/30);
+  gameState='playing';
+  document.getElementById('title').style.display = 'none';
+  if (!canvas) { canvas=document.getElementById('game'); ctx=canvas.getContext('2d'); }
+  lastTime=performance.now();
+  requestAnimationFrame(gameLoop);
 }
-</script>
-<div id="save-screen"><h3>SAVE GAME</h3><input type="text" id="save-name-input" placeholder="Enter save name..." maxlength="20"><div id="save-slots-list"></div><button class="save-menu-btn" onclick="doSaveGame()">Save</button><button class="save-menu-btn cancel" onclick="closeSaveScreen()">Cancel</button></div>
+<div id="save-screen"><h3>SAVE GAME</h3><div id="save-slots-list"></div><button class="save-menu-btn" onclick="doSaveGame()">Save New</button><button class="save-menu-btn cancel" onclick="closeSaveScreen()">Cancel</button></div>
 <div id="load-screen"><h3>LOAD GAME</h3><div id="load-slots-list"></div><button class="save-menu-btn cancel" onclick="closeLoadScreen()" ontouchend="event.preventDefault();closeLoadScreen()">Back</button></div>
 <button id="save-btn-hud" onclick="openSaveScreen()" style="display:none;">SAVE</button>
 
@@ -1389,7 +1372,7 @@ function loadMap(name) {
 <h3>&#x1F3AE; R1 Controls</h3>
 <div class="help-line"><span class="help-key">Scroll</span> = Hotbar / Zoom</div>
 <div class="help-line"><span class="help-key">Side Tap</span> = Mine / Place</div>
-<div class="help-line"><span class="help-key">Side Hold</span> = Craft Menu</div>
+<div class="help-line"><span class="help-key">Side x2</span> = Craft Menu</div>
 <div class="help-line"><span class="help-key">=</span> Menu (Pause/Save/Load/Quit)</div>
 <div class="help-line"><span class="help-key">INV</span> Full inventory view</div>
 <div class="help-line" style="color:#0f0;font-size:6px;margin-top:4px;">Context buttons appear automatically!</div>
