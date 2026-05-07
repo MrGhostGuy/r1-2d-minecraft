@@ -84,12 +84,8 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #r1-context-panel .cbtn.tool{border-color:#fa0;color:#fa0;}
 @keyframes cbtnIn{from{opacity:0;transform:translateX(8px);}to{opacity:1;transform:translateX(0);}}
 
-#r1-voice-indicator{position:absolute;top:28px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:#0f0;font-size:7px;padding:2px 6px;border-radius:3px;z-index:200;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
-#r1-voice-indicator.show{opacity:1;}
-#r1-voice-indicator.listening{color:#ff0;}
-#r1-voice-btn{position:absolute;bottom:26px;right:58px;width:26px;height:26px;background:rgba(0,80,180,0.7);border:1px solid #48f;border-radius:4px;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;user-select:none;-webkit-user-select:none;font-family:monospace;font-weight:bold;z-index:25;}
-#r1-voice-btn:active{background:rgba(0,120,255,0.8);}
-#r1-voice-btn.active{background:rgba(0,200,0,0.6);border-color:#0f0;}
+#r1-inventory-btn{position:absolute;bottom:26px;right:58px;width:26px;height:26px;background:rgba(80,60,0,0.7);border:1px solid #a80;border-radius:4px;color:#fff;font-size:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;user-select:none;-webkit-user-select:none;font-family:monospace;font-weight:bold;z-index:25;}
+#r1-inventory-btn:active{background:rgba(120,90,0,0.8);}
 
 #r1-toast{position:absolute;top:30px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;font-size:7px;padding:3px 8px;border-radius:3px;z-index:200;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
 #r1-toast.show{opacity:1;}
@@ -1311,21 +1307,21 @@ function repairTool(){r1Toast('Tools auto-repair on sleep');}
 function torchPlace(){placeBlock();r1Vibrate(20);}
 function useSeeds(){placeBlock();r1Vibrate(20);}
 
-// === VOICE CONTROL (Push-to-Talk) ===
-var speechRec=null,speechActive=false;
-function initSpeechRecognition(){if(!window.webkitSpeechRecognition&&!window.SpeechRecognition)return null;const SpeechRec=window.webkitSpeechRecognition||window.SpeechRecognition;return new SpeechRec();}
-function startVoice(){if(speechActive)return;speechRec=initSpeechRecognition();if(!speechRec){r1Toast('No speech support');return;}speechRec.continuous=false;speechRec.interimResults=false;speechRec.lang='en-US';speechActive=true;speechRec.onresult=function(e){if(e.results.length>0){var cmd=e.results[e.results.length-1][0].transcript.toLowerCase().trim();processVoiceCommand(cmd);}};speechRec.onend=function(){stopVoice();};speechRec.onerror=function(e){if(e.error==='not-allowed'||e.error==='service-not-allowed'){r1Toast('Mic not allowed');}stopVoice();};try{speechRec.start();document.getElementById('r1-voice-btn').classList.add('active');updateVoiceIndicator(true);r1Vibrate(30);r1Toast('Listening...');}catch(err){stopVoice();}}
-function stopVoice(){speechActive=false;if(speechRec)try{speechRec.stop();}catch(err){}document.getElementById('r1-voice-btn').classList.remove('active');updateVoiceIndicator(false);}
-function processVoiceCommand(cmd){if(!cmd)return;updateVoiceIndicator(true,cmd);r1Toast('"'+cmd+'"');r1Vibrate(20);var lc=cmd.toLowerCase().replace(/[^a-z\s]/g,'').trim();var words=lc.split(/\s+/);var action=words[0];if(VOICE_MAP[action]){VOICE_MAP[action](words.slice(1));updateVoiceIndicator(true);return;}for(var i=words.length;i>0;i--){var phrase=words.slice(0,i).join(' '');if(VOICE_MAP[phrase]){VOICE_MAP[phrase](words.slice(i));return;}}r1Toast('Unknown: "'+words[0]+'"');updateVoiceIndicator(true);}
-function updateVoiceIndicator(active,cmd){var ind=document.getElementById('r1-voice-indicator');if(!ind)return;if(cmd){ind.classList.add('show','listening');ind.textContent='"'+cmd+'"';}else if(speechActive){ind.classList.add('show');ind.classList.remove('listening');ind.textContent='Listening...';}else{ind.classList.remove('show','listening');}}
-var VOICE_MAP={'eat':function(){eatFood();},'attack':function(){attackEntity();},'fight':function(){attackEntity();},'kill':function(){attackEntity();},'craft':function(){toggleCraftingMenu();},'build':function(){toggleCraftingMenu();},'place':function(){placeBlock();},'put':function(){placeBlock();},'sleep':function(){if(gameMode==='survival'&&player.hp<player.maxHp){player.hp=player.maxHp;r1Toast('Slept! HP restored');r1Vibrate(30);}else{r1Toast('Need a bed to sleep');}},'heal':function(){eatFood();},'punch':function(){attackEntity();},'stop':function(){stopVoice();r1Toast('Voice off');},'pause':function(){togglePause();},'menu':function(){togglePause();},'save':function(){if(gameState=='playing'){var name='voice-'+Date.now();saveGame(name);r1Toast('Saved: '+name);}},'quit':function(){quitToMenu();},'respawn':function(){if(gameState=='dead'){restartGame();}else{r1Toast('Already alive');}},'fly':function(){if(gameMode=='creative'){toggleFly();r1Toast(player.flying?'Flying ON':'Flying OFF');}else{r1Toast('Creative only');}},'help':function(){document.getElementById('r1-help').style.display='flex';},
+// === INVENTORY TOGGLE ===
+function toggleInventory(){if(gameState=='inventory'){hideInventory();gameState='playing';}else if(gameState=='playing'){showInventory();gameState='inventory';}}
+function showInventory(){var sc=document.getElementById('inv-fullscreen-screen');if(!sc){createInventoryScreen();sc=document.getElementById('inv-fullscreen-screen');}sc.style.display='flex';renderInventory();}
+function hideInventory(){var sc=document.getElementById('inv-fullscreen-screen');if(sc)sc.style.display='none';}
+function createInventoryScreen(){var d=document.createElement('div');d.id='inv-fullscreen-screen';d.style.cssText='position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.92);z-index:70;display:none;flex-direction:column;padding:4px;color:#fff;font-family:monospace;';d.innerHTML='<h3 style="text-align:center;padding:4px;font-size:10px;color:#5c3;">Inventory</h3><div id="inv-grid" style="display:flex;flex-wrap:wrap;gap:1px;justify-content:center;"></div><div id="inv-selected-name" style="text-align:center;font-size:7px;color:#aaa;padding:2px;"></div><div class="menu-btn" style="margin-top:4px;" onclick="hideInventory()" ontouchend="event.preventDefault();hideInventory()">Close</div>';document.body.appendChild(d);}
+function renderInventory(){var grid=document.getElementById('inv-grid');if(!grid)return;grid.innerHTML='';for(var i=0;i<36;i++){var item=inventory[i];var slot=document.createElement('div');slot.style.cssText='width:22px;height:22px;border:1px solid #555;background:rgba(40,40,40,0.8);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;';if(item&&item.id>0){var ic=item.id<100?BCOLORS[item.id]||'#fff':ICOLORS[item.id]||'#fff';slot.innerHTML='<div style="width:12px;height:12px;background:'+ic+';margin-bottom:1px;"></div><span style="font-size:6px;color:#fff;">'+item.count+'</span>';}else{slot.innerHTML='<span style="font-size:6px;color:#333;">--</span>';}slot.onclick=function(idx){return function(){selectInventorySlot(idx);}}(i);slot.ontouchend=function(idx){return function(e){e.preventDefault();selectInventorySlot(idx);}}(i);grid.appendChild(slot);}}
+var selName=document.getElementById('inv-selected-name');if(selName){var held=getHeldItem();selName.textContent=held&&held.id>0?(held.id<100?BNAMES[held.id]||'Block':INAMES[held.id]||'Item'):'Empty';}
+function selectInventorySlot(idx){player.selectedSlot=idx%9;renderInventory();r1Vibrate(10);}
 // Context panel updated each frame via gameLoop
 
 
 
 function quitToMenu() {
   if (gameLoopId) { clearInterval(gameLoopId); gameLoopId = null; }
-  ["save-screen","load-screen","craft-screen","map-select-screen"].forEach(function(id){ var e=document.getElementById(id); if(e) e.style.display="none"; });
+  ["save-screen","load-screen","craft-screen","map-select-screen","inv-fullscreen-screen"].forEach(function(id){ var e=document.getElementById(id); if(e) e.style.display="none"; });
   document.getElementById("title").style.display = "flex";
   document.getElementById("r1-hud").style.display = "none";
   document.getElementById("save-btn-hud").style.display = "none";
@@ -1385,9 +1381,8 @@ function loadMap(name) {
 <div id="r1-hud">
 <div class="rbtn" id="r1-menu-btn" onclick="togglePause()" ontouchend="event.preventDefault();togglePause()">=</div>
 <div id="r1-context-panel"></div>
-<div class="rbtn" id="r1-voice-btn" onmousedown="startVoice()" ontouchstart="event.preventDefault();startVoice()" onmouseup="stopVoice()" ontouchend="event.preventDefault();stopVoice()">MIC</div>
+<div class="rbtn" id="r1-inventory-btn" onclick="toggleInventory()" ontouchend="event.preventDefault();toggleInventory()">INV</div>
 </div>
-<div id="r1-voice-indicator"></div>
 <div id="r1-toast"></div>
 
 <div id="r1-help">
@@ -1396,11 +1391,10 @@ function loadMap(name) {
 <div class="help-line"><span class="help-key">Side Tap</span> = Mine / Place</div>
 <div class="help-line"><span class="help-key">Side Hold</span> = Craft Menu</div>
 <div class="help-line"><span class="help-key">=</span> Menu (Pause/Save/Load/Quit)</div>
-<div class="help-line"><span class="help-key">MIC</span> Voice (hold to speak)</div>
+<div class="help-line"><span class="help-key">INV</span> Full inventory view</div>
 <div class="help-line" style="color:#0f0;font-size:6px;margin-top:4px;">Context buttons appear automatically!</div>
 <div class="help-line" style="color:#888;font-size:6px;">Hold food &#x2192; [Eat] | Hold sword &#x2192; [Atk]</div>
 <div class="help-line" style="color:#888;font-size:6px;">Hold tool &#x2192; [Fix] | Hold block &#x2192; [Place]</div>
-<div class="help-line" style="color:#fa0;font-size:6px;margin-top:4px;">Voice: eat, attack, craft, place, heal, stop</div>
 <div class="help-line"><span class="help-key">AL</span> Auto-Lock | <span class="help-key">AC</span> Auto-Combat</div>
 <div class="help-close" onclick="document.getElementById('r1-help').style.display='none'" ontouchend="event.preventDefault();document.getElementById('r1-help').style.display='none'">Close</div>
 </div>
