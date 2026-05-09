@@ -32,7 +32,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #pause-menu .menu-btn:hover{background:#777;}
 #pause-menu .menu-btn.quit{background:#800;border-color:#f44;}
 #pause-menu .menu-btn.quit:hover{background:#a00;}
-#hunger-bar{display:none;}
+#hunger-bar{position:absolute;top:12px;left:2px;z-index:10;display:none;}
 #fly-indicator{position:absolute;top:22px;left:2px;color:#0ff;font-size:7px;z-index:10;display:none;}
 #health-bar{position:absolute;top:2px;left:2px;z-index:10;}
 #time-display{position:absolute;top:2px;right:56px;font-size:7px;color:#fff;z-index:10;text-shadow:1px 1px #000;}
@@ -90,7 +90,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #r1-toast{position:absolute;top:30px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;font-size:7px;padding:3px 8px;border-radius:3px;z-index:200;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
 #r1-toast.show{opacity:1;}
 
-#r1-help{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.9);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:monospace;text-align:center;}
+#r1-help{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.9);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:monospace;text-align:center;pointer-events:auto;}
 #r1-help h3{color:#5c3;font-size:10px;margin-bottom:6px;}
 #r1-help .help-line{font-size:7px;color:#ccc;margin:2px 0;}
 #r1-help .help-key{color:#ff0;font-weight:bold;}
@@ -130,7 +130,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <div class="menu-btn" onclick="startGame('survival')" ontouchend="event.preventDefault();startGame('survival')"><b>Survival Mode</b><br><span style="font-size:6px;color:#aaa">Health, Mobs, Crafting</span></div>
     <div class="menu-btn" onclick="startGame('creative')" ontouchend="event.preventDefault();startGame('creative')"><b>Creative Mode</b><br><span style="font-size:6px;color:#aaa">Fly, Infinite Blocks, No Damage</span></div>
 <div class="menu-btn" onclick="openLoadScreenFromTitle()" ontouchend="event.preventDefault();openLoadScreenFromTitle()">Load Game</div>
-<div class="menu-btn" onclick="document.getElementById('r1-help').style.display='flex'" ontouchend="event.preventDefault();document.getElementById('r1-help').style.display='flex'">Controls</div></div>
+<div class="menu-btn" onclick="showHelp()" ontouchend="event.preventDefault();showHelp()">Controls</div></div>
 <canvas id="game" width="240" height="282"></canvas>
 <div id="combat-btn" onclick="toggleAutoCombat()">AC</div>
 <div id="enemy-warn">&#9888; ENEMY</div>
@@ -919,6 +919,9 @@ if(isNight){ctx.fillStyle='rgba(0,0,20,0.4)';ctx.fillRect(0,0,W,H);}
 // Cursor highlight
 var cx=cursorX*TILE-camX,cy=cursorY*TILE-camY;
 ctx.strokeStyle='rgba(255,255,255,0.7)';ctx.lineWidth=1;ctx.strokeRect(cx,cy,TILE,TILE);
+// Block name tooltip
+var cb=world[cursorX]&&world[cursorX][cursorY];if(cb&&cb!==BLOCKS.AIR&&cb!==BLOCKS.WATER){var bname=BNAMES[cb]||'Block';ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(cx,cy-10,TILE+2,9);ctx.fillStyle='#fff';ctx.font='6px monospace';ctx.fillText(bname,cx+1,cy-2);
+ctx.textAlign='left';}
 // Mining progress
 if(miningProgress>0){
 var b=world[cursorX]?world[cursorX][cursorY]:0;var hard=BLOCK_HEALTH[b]||HARDNESS[b]||1;
@@ -977,7 +980,7 @@ if(hpBar)hpBar.style.display='none';
 if(hunBar)hunBar.style.display='none';
 }else{
 if(hpBar){hpBar.style.display='block';hpBar.innerHTML='';for(var h=0;h<10;h++){hpBar.innerHTML+=(h<Math.ceil(player.hp/2))?'\u2764':'\u2661';}}
-if(hunBar){hunBar.style.display='block';var huns='';for(var hi=0;hi<player.maxHunger/2;hi++){huns+=hi<Math.ceil(player.hunger/2)?'\uD83C\uDF57':'\uD83E\uDDB4';}hunBar.innerHTML=huns;}
+if(hunBar){hunBar.style.display='block';var huns='';for(var hi=0;hi<player.maxHunger/2;hi++){huns+=hi<Math.ceil(player.hunger/2)?'<span style="color:#c80;">&#x1F35E;</span>':'<span style="color:#444;">&#x25A1;</span>';}hunBar.innerHTML=huns;}
 }
 var hb=document.getElementById('inv-bar');hb.innerHTML='';
 for(var i=0;i<9;i++){
@@ -1122,8 +1125,10 @@ if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,12
 }
 if(gameState=='dead'){
 ctx.fillStyle='rgba(200,0,0,0.3)';ctx.fillRect(0,0,W,H);
-ctx.fillStyle='#fff';ctx.font='14px monospace';ctx.fillText('YOU DIED',80,120);
-ctx.font='8px monospace';ctx.fillText('Tap or press to respawn',55,145);
+ctx.fillStyle='#fff';ctx.font='14px monospace';ctx.textAlign='center';ctx.fillText('YOU DIED',W/2,100);
+ctx.font='8px monospace';ctx.fillStyle='#ff4';ctx.fillText('Tap or press to respawn',W/2,130);
+ctx.font='7px monospace';ctx.fillStyle='#aaa';ctx.fillText('Items dropped at death location',W/2,150);
+ctx.textAlign='left';
 }
 requestAnimationFrame(gameLoop);
 }
@@ -1280,7 +1285,13 @@ PLACEABLE:{items:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24
 THROWABLE:{items:[123],action:useSeeds,icon:'Plant',cls:'block'}
 };
 function updateContextPanel(){var panel=document.getElementById('r1-context-panel');if(!panel)return;if(gameState!='playing'){panel.innerHTML='';return;}var held=getHeldItem();panel.innerHTML='';panel.style.display='none';if(!held||held.id===0)return;var actions=[];for(var key in CONTEXT_ACTIONS){var a=CONTEXT_ACTIONS[key];if(a.items.indexOf(held.id)!==-1)actions.push(a);}if(actions.length===0&&held.id===17)actions.push({action:torchPlace,icon:'Torch',cls:'block'});if(actions.length===0)return;panel.style.display='flex';actions.forEach(function(a){var btn=document.createElement('div');btn.className='cbtn '+a.cls;btn.textContent=a.icon;btn.onclick=function(){a.action();};btn.ontouchend=function(e){e.preventDefault();a.action();};panel.appendChild(btn);});}
-function repairTool(){r1Toast('Tools auto-repair on sleep');}
+function repairTool(){var held=getHeldItem();if(!held||held.id<100)return;var tier=TOOL_TIER[held.id];if(!tier)return;var repairItem={'wood':5,'stone':12,'iron':111,'diamond':113}[tier];if(!repairItem){r1Toast('Cannot repair this');return;}
+var slot=player.selectedSlot;var td=getToolDur(slot);if(!td){r1Toast('Tool not damaged');return;}
+if(td.cur>=td.max){r1Toast('Tool at full durability');return;}
+if(countItem(repairItem)<1){r1Toast('Need '+(BNAMES[repairItem]||INAMES[repairItem])+' to repair');return;}
+removeItem(repairItem,1);td.cur=Math.min(td.max,td.cur+Math.floor(td.max*0.25));r1Toast('Repaired! '+td.cur+'/'+td.max);r1Vibrate(30);}
+function showHelp(){document.getElementById('r1-help').style.display='flex';}
+function closeHelp(){document.getElementById('r1-help').style.display='none';}
 function torchPlace(){placeBlock();r1Vibrate(20);}
 function useSeeds(){placeBlock();r1Vibrate(20);}
 
@@ -1289,8 +1300,9 @@ function toggleInventory(){if(gameState=='inventory'){hideInventory();gameState=
 function showInventory(){var sc=document.getElementById('inv-fullscreen-screen');if(!sc){createInventoryScreen();sc=document.getElementById('inv-fullscreen-screen');}sc.style.display='flex';renderInventory();}
 function hideInventory(){var sc=document.getElementById('inv-fullscreen-screen');if(sc)sc.style.display='none';}
 function createInventoryScreen(){var d=document.createElement('div');d.id='inv-fullscreen-screen';d.style.cssText='position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.92);z-index:70;display:none;flex-direction:column;padding:4px;color:#fff;font-family:monospace;';d.innerHTML='<h3 style="text-align:center;padding:4px;font-size:10px;color:#5c3;">Inventory</h3><div id="inv-grid" style="display:flex;flex-wrap:wrap;gap:1px;justify-content:center;"></div><div id="inv-selected-name" style="text-align:center;font-size:7px;color:#aaa;padding:2px;"></div><div class="menu-btn" style="margin-top:4px;" onclick="hideInventory()" ontouchend="event.preventDefault();hideInventory()">Close</div>';document.body.appendChild(d);}
-function renderInventory(){var grid=document.getElementById('inv-grid');if(!grid)return;grid.innerHTML='';for(var i=0;i<36;i++){var item=inventory[i];var slot=document.createElement('div');slot.style.cssText='width:22px;height:22px;border:1px solid #555;background:rgba(40,40,40,0.8);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;';if(item&&item.id>0){var ic=item.id<100?BCOLORS[item.id]||'#fff':ICOLORS[item.id]||'#fff';slot.innerHTML='<div style="width:12px;height:12px;background:'+ic+';margin-bottom:1px;"></div><span style="font-size:6px;color:#fff;">'+item.count+'</span>';}else{slot.innerHTML='<span style="font-size:6px;color:#333;">--</span>';}slot.onclick=function(idx){return function(){selectInventorySlot(idx);}}(i);slot.ontouchend=function(idx){return function(e){e.preventDefault();selectInventorySlot(idx);}}(i);grid.appendChild(slot);}}
+function renderInventory(){var grid=document.getElementById('inv-grid');if(!grid)return;grid.innerHTML='';for(var i=0;i<36;i++){var item=inventory[i];var slot=document.createElement('div');slot.style.cssText='width:22px;height:22px;border:1px solid #555;background:rgba(40,40,40,0.8);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;';if(item&&item.id>0){var ic=item.id<100?BCOLORS[item.id]||'#fff':ICOLORS[item.id]||'#fff';slot.innerHTML='<div style="width:12px;height:12px;background:'+ic+';margin-bottom:1px;"></div><span style="font-size:6px;color:#fff;">'+item.count+'</span>';}else{slot.innerHTML='<span style="font-size:6px;color:#333;">--</span>';}slot.onclick=function(idx){return function(){selectInventorySlot(idx);}}(i);slot.ontouchend=function(idx){return function(e){e.preventDefault();selectInventorySlot(idx);}}(i);grid.appendChild(slot);}
 var selName=document.getElementById('inv-selected-name');if(selName){var held=getHeldItem();selName.textContent=held&&held.id>0?(held.id<100?BNAMES[held.id]||'Block':INAMES[held.id]||'Item'):'Empty';}
+}
 function selectInventorySlot(idx){player.selectedSlot=idx%9;renderInventory();r1Vibrate(10);}
 // Context panel updated each frame via gameLoop
 
@@ -1336,12 +1348,12 @@ function createNewMap() {
   document.getElementById("title").style.display = "none";
   if (gameLoopId) clearInterval(gameLoopId);
   gameState='playing';
-  document.getElementById('map-select-screen').style.display = 'none';
-  document.getElementById('title').style.display = 'none';
   if (!canvas) { canvas=document.getElementById('game'); ctx=canvas.getContext('2d'); }
   lastTime=performance.now();
   requestAnimationFrame(gameLoop);
 }
+
+function loadMap(name) {
   var data = localStorage.getItem("mc_map_" + name);
   if (data) {
     var save = JSON.parse(data);
@@ -1350,9 +1362,9 @@ function createNewMap() {
     if (save.inventory) inventory = save.inventory;
   }
   document.getElementById("title").style.display = "none";
+  document.getElementById("map-select-screen").style.display = "none";
   if (gameLoopId) clearInterval(gameLoopId);
   gameState='playing';
-  document.getElementById('title').style.display = 'none';
   if (!canvas) { canvas=document.getElementById('game'); ctx=canvas.getContext('2d'); }
   lastTime=performance.now();
   requestAnimationFrame(gameLoop);
@@ -1379,7 +1391,7 @@ function createNewMap() {
 <div class="help-line" style="color:#888;font-size:6px;">Hold food &#x2192; [Eat] | Hold sword &#x2192; [Atk]</div>
 <div class="help-line" style="color:#888;font-size:6px;">Hold tool &#x2192; [Fix] | Hold block &#x2192; [Place]</div>
 <div class="help-line"><span class="help-key">AL</span> Auto-Lock | <span class="help-key">AC</span> Auto-Combat</div>
-<div class="help-close" onclick="document.getElementById('r1-help').style.display='none'" ontouchend="event.preventDefault();document.getElementById('r1-help').style.display='none'">Close</div>
+<div class="help-close" onclick="closeHelp()" ontouchend="event.preventDefault();closeHelp()">Close</div>
 </div>
 
   <div id="map-select-screen" style="display:none;position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.85);z-index:50;flex-direction:column;align-items:center;justify-content:center;color:#fff;">
