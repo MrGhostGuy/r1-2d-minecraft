@@ -15,6 +15,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #title .menu-btn{background:#555;color:#fff;border:1px solid #888;padding:8px 12px;font-size:6px;margin:4px;cursor:pointer;font-family:monospace;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,0.3);user-select:none;-webkit-user-select:none;}
 #title .menu-btn:hover{background:#777;}
 #hud{position:absolute;top:0;left:0;width:240px;pointer-events:none;z-index:10;}
+#coord-display{position:absolute;top:12px;right:56px;font-size:6px;color:#0f0;z-index:10;text-shadow:1px 1px #000;}
 #inv-bar{position:absolute;bottom:0;left:0;width:240px;height:22px;background:rgba(0,0,0,0.7);display:flex;z-index:10;}
 .inv-slot{position:relative;width:24px;height:22px;border:1px solid #555;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;}
 .inv-slot.selected{border-color:#fff;background:rgba(255,255,255,0.2);}
@@ -90,7 +91,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #r1-toast{position:absolute;top:30px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;font-size:7px;padding:3px 8px;border-radius:3px;z-index:200;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
 #r1-toast.show{opacity:1;}
 
-#r1-help{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.9);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:monospace;text-align:center;pointer-events:auto;}
+#r1-help{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.95);z-index:999;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:monospace;text-align:center;pointer-events:auto;touch-action:none;}
 #r1-help h3{color:#5c3;font-size:10px;margin-bottom:6px;}
 #r1-help .help-line{font-size:7px;color:#ccc;margin:2px 0;}
 #r1-help .help-key{color:#ff0;font-weight:bold;}
@@ -142,7 +143,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 <div id="health-bar"></div>
 <!-- hunger bar removed -->
 <div id="fly-indicator">FLYING</div>
-<div id="time-display"></div>
+<div id="time-display"></div><div id="coord-display" style="position:absolute;top:12px;right:56px;font-size:6px;color:#0f0;z-index:10;text-shadow:1px 1px #000;"></div>
 <div id="inv-bar"></div>
 <div id="craft-btn" onclick="toggleCraftingMenu()" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()">Craft</div>
 <div id="craft-screen"><h3>Crafting<span id="craft-close-btn" onclick="hideCrafting()" ontouchstart="event.stopPropagation()">X</span></h3><div id="recipe-list"></div></div>
@@ -161,7 +162,7 @@ var BCOLORS={};
 BCOLORS[0]='rgba(0,0,0,0)';BCOLORS[1]='#8B6914';BCOLORS[2]='#4a8f3f';BCOLORS[3]='#808080';BCOLORS[4]='#d2b48c';BCOLORS[5]='#8B5A2B';BCOLORS[6]='#228B22';BCOLORS[7]='#404040';BCOLORS[8]='#B87333';BCOLORS[9]='#FFD700';BCOLORS[10]='#00FFFF';BCOLORS[11]='#DEB887';BCOLORS[12]='#696969';BCOLORS[13]='#1a1a1a';BCOLORS[14]='rgba(30,100,200,0.6)';BCOLORS[15]='#F0F0F0';BCOLORS[16]='rgba(200,230,255,0.4)';BCOLORS[17]='#FFD700';BCOLORS[18]='#555';BCOLORS[19]='#8B4513';BCOLORS[20]='#9E9E9E';BCOLORS[21]='#B0A090';BCOLORS[22]='#006400';
 BCOLORS[23]='#8B4513';BCOLORS[24]='#C4A882';BCOLORS[25]='#6B3A1F';BCOLORS[26]='#2d8a2d';BCOLORS[27]='#4aa84a';BCOLORS[28]='#d4a017';
 var BNAMES={};
-BNAMES[0]='Air';BNAMES[1]='Dirt';BNAMES[2]='Grass';BNAMES[3]='Stone';BNAMES[4]='Sand';BNAMES[5]='Wood';BNAMES[6]='Leaves';BNAMES[7]='Coal Ore';BNAMES[8]='Iron Ore';BNAMES[9]='Gold Ore';BNAMES[10]='Diamond';BNAMES[11]='Planks';BNAMES[12]='Cobble';BNAMES[13]='Bedrock';BNAMES[14]='Water';BNAMES[15]='Snow';BNAMES[16]='Glass';BNAMES[17]='Torch';BNAMES[18]='Furnace';BNAMES[19]='Chest';BNAMES[20]='Gravel';BNAMES[21]='Clay';BNAMES[22]='Cactus';BNAMES[23]='Door';
+BNAMES[0]='Air';BNAMES[1]='Dirt';BNAMES[2]='Grass';BNAMES[3]='Stone';BNAMES[4]='Sand';BNAMES[5]='Wood';BNAMES[6]='Leaves';BNAMES[7]='Coal Ore';BNAMES[8]='Iron Ore';BNAMES[9]='Gold Ore';BNAMES[10]='Diamond';BNAMES[11]='Planks';BNAMES[12]='Cobble';BNAMES[13]='Bedrock';BNAMES[14]='Water';BNAMES[15]='Snow';BNAMES[16]='Glass';BNAMES[17]='Torch';BNAMES[18]='Furnace';BNAMES[19]='Chest';BNAMES[20]='Gravel';BNAMES[21]='Clay';BNAMES[22]='Cactus';BNAMES[23]='Door';BNAMES[29]='Bed';
 var HARDNESS={};var BLOCK_HEALTH={};BLOCK_HEALTH[1]=2;BLOCK_HEALTH[2]=2;BLOCK_HEALTH[3]=6;BLOCK_HEALTH[4]=2;BLOCK_HEALTH[5]=4;BLOCK_HEALTH[6]=1;BLOCK_HEALTH[7]=6;BLOCK_HEALTH[8]=9;BLOCK_HEALTH[9]=12;BLOCK_HEALTH[10]=15;BLOCK_HEALTH[11]=3;BLOCK_HEALTH[12]=6;BLOCK_HEALTH[13]=999;BLOCK_HEALTH[15]=1;BLOCK_HEALTH[16]=2;BLOCK_HEALTH[17]=0;BLOCK_HEALTH[18]=6;BLOCK_HEALTH[19]=4;BLOCK_HEALTH[20]=2;BLOCK_HEALTH[21]=2;BLOCK_HEALTH[22]=1;BLOCK_HEALTH[23]=4;BLOCK_HEALTH[24]=2;BLOCK_HEALTH[25]=1;var PICKAXE_SPEED={101:1.0,102:0.75,103:1.5,104:2.5};
 HARDNESS[1]=1;HARDNESS[2]=1;HARDNESS[3]=3;HARDNESS[4]=1;HARDNESS[5]=2;HARDNESS[6]=0.5;HARDNESS[7]=4;HARDNESS[8]=4;HARDNESS[9]=5;HARDNESS[10]=6;HARDNESS[11]=1.5;HARDNESS[12]=2;HARDNESS[13]=999;HARDNESS[14]=999;HARDNESS[15]=0.5;HARDNESS[16]=1;HARDNESS[17]=0;HARDNESS[18]=3;HARDNESS[19]=2;HARDNESS[20]=1;HARDNESS[21]=1;HARDNESS[22]=0.5;
 HARDNESS[23]=2;HARDNESS[24]=1;HARDNESS[25]=0.5;HARDNESS[26]=0;HARDNESS[27]=0;HARDNESS[28]=0;
@@ -1008,6 +1009,7 @@ var td=document.getElementById('time-display');
 var hr=Math.floor((dayTime/dayLength)*24);var ampm=hr>=12?'PM':'AM';
 hr=hr%12;if(hr==0)hr=12;
 td.textContent=(isNight?'\u263D':'\u2600')+' '+hr+ampm;
+var coord=document.getElementById('coord-display');if(coord)coord.textContent='X:'+Math.floor(player.x/TILE)+' Y:'+Math.floor(player.y/TILE);
 }
 // === CRAFTING UI ===
 
