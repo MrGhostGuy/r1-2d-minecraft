@@ -1097,6 +1097,7 @@ function startGame(mode){
 gameMode=mode;gameState='playing';weatherState='clear';weatherTimer=0;weatherDuration=WEATHER_MIN_CLEAR+Math.floor(Math.random()*(WEATHER_MAX_CLEAR-WEATHER_MIN_CLEAR));weatherIntensity=0;targetIntensity=0;raindrops=[];lightningFlash=0;
 document.getElementById('title').style.display='none';document.getElementById('r1-hud').style.display='flex';
 canvas=document.getElementById('game');ctx=canvas.getContext('2d');
+initAudio();
 
 
 generateWorld();
