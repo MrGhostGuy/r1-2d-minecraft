@@ -923,7 +923,6 @@ ctx.strokeStyle='rgba(255,255,255,0.7)';ctx.lineWidth=1;ctx.strokeRect(cx,cy,TIL
 // Block name tooltip
 var cb=world[cursorX]&&world[cursorX][cursorY];if(cb&&cb!==BLOCKS.AIR&&cb!==BLOCKS.WATER){var bname=BNAMES[cb]||'Block';ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(cx,cy-10,TILE+2,9);ctx.fillStyle='#fff';ctx.font='6px monospace';ctx.fillText(bname,cx+1,cy-2);
 ctx.textAlign='left';}
-ctx.restore();
 // Mining progress
 if(miningProgress>0){
 var b=world[cursorX]?world[cursorX][cursorY]:0;var hard=BLOCK_HEALTH[b]||HARDNESS[b]||1;
