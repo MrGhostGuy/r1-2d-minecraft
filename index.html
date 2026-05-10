@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -923,6 +923,7 @@ ctx.strokeStyle='rgba(255,255,255,0.7)';ctx.lineWidth=1;ctx.strokeRect(cx,cy,TIL
 // Block name tooltip
 var cb=world[cursorX]&&world[cursorX][cursorY];if(cb&&cb!==BLOCKS.AIR&&cb!==BLOCKS.WATER){var bname=BNAMES[cb]||'Block';ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(cx,cy-10,TILE+2,9);ctx.fillStyle='#fff';ctx.font='6px monospace';ctx.fillText(bname,cx+1,cy-2);
 ctx.textAlign='left';}
+ctx.restore();
 // Mining progress
 if(miningProgress>0){
 var b=world[cursorX]?world[cursorX][cursorY]:0;var hard=BLOCK_HEALTH[b]||HARDNESS[b]||1;
@@ -972,6 +973,7 @@ if(p.life<=0){particles.splice(i,1);continue;}
 ctx.fillStyle=p.color;ctx.fillRect(p.x-camX,p.y-camY,2,2);
 }
 }
+ctx.restore();
 // === HUD ===
 function renderHUD(){
 var hpBar=document.getElementById('health-bar');
@@ -1122,7 +1124,7 @@ dt=(now-lastTime)/16.67;if(dt>3)dt=3;lastTime=now;
 if(gameState=='playing'){
 updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updateCrops(dt);updateDayNight();updateWeather();spawnEnemies();spawnCaveEnemies();spawnSheep();updateEntities(dt);updateAutoLock();updateAutoCombat(dt);updateDroppedItems(dt);
 if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
-render();renderDroppedItems(ctx,camX,camY);renderAutoLock();renderAutoCombat(ctx,camX,camY);renderWeather();ctx.restore();updateContextPanel();renderHUD();
+render();renderDroppedItems(ctx,camX,camY);renderAutoLock();renderAutoCombat(ctx,camX,camY);renderWeather();updateContextPanel();renderHUD();
 if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
 
 }
