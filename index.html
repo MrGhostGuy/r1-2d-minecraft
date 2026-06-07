@@ -181,6 +181,7 @@ INAMES[117]='Stone Hatchet';INAMES[118]='Iron Hatchet';INAMES[119]='Diamond Hatc
 var TOOL_POWER={};
 TOOL_POWER[101]=2;TOOL_POWER[102]=4;TOOL_POWER[103]=6;TOOL_POWER[104]=8;TOOL_POWER[109]=3;TOOL_POWER[110]=2;
 TOOL_POWER[117]=4;TOOL_POWER[118]=6;TOOL_POWER[119]=8;TOOL_POWER[120]=3;TOOL_POWER[121]=5;TOOL_POWER[122]=7;
+TOOL_POWER[126]=2;TOOL_POWER[131]=3;TOOL_POWER[132]=5;TOOL_POWER[133]=7;
 var SWORD_DMG={};
 SWORD_DMG[105]=4;SWORD_DMG[106]=5;SWORD_DMG[107]=6;SWORD_DMG[108]=8;
 var FOOD_HEAL={};
@@ -298,21 +299,23 @@ function getBiome(x,seed){var b=octaveNoise((x+seed)*0.005,2);if(b<0.15)return 2
 // === PLAYER PHYSICS ===
 var doorStates={};
 function isDoorBlock(x,y){if(x<0||x>=WORLD_W||y<0||y>=WORLD_H)return false;return world[x][y]===BLOCKS.DOOR;}
-function openDoor(x,y){var k=x+','+y;doorStates[k]={open:true,timer:0.6};}
+function openDoor(x,y){var k=x+','+y;doorStates[k]={open:true,timer:3.0};}
 function isDoorOpen(x,y){var k=x+','+y;return doorStates[k]&&doorStates[k].open;}
-function updateDoors(dt){for(var k in doorStates){if(doorStates[k].open){doorStates[k].timer-=dt;if(doorStates[k].timer<=0){doorStates[k].open=false;delete doorStates[k];}}}}
-function isSolidForPlayer(x,y){if(isDoorBlock(x,y))return false;return isSolid(x,y);}
-function isSolidForEnemy(x,y){return isSolid(x,y);}
+function closeDoor(x,y){var k=x+','+y;if(doorStates[k])doorStates[k].open=false;}
+function toggleDoor(x,y){if(isDoorOpen(x,y)){closeDoor(x,y);}else{openDoor(x,y);}}
+function updateDoors(dt){for(var k in doorStates){if(doorStates[k].open){doorStates[k].timer-=dt;if(doorStates[k].timer<=0){doorStates[k].open=false;}}}}
+function isSolidForPlayer(x,y){if(isDoorBlock(x,y)&&isDoorOpen(x,y))return false;return isSolid(x,y);}
+function isSolidForEnemy(x,y){if(isDoorBlock(x,y)&&isDoorOpen(x,y))return false;return isSolid(x,y);}
 
-function isSolid(x,y){if(x<0||x>=WORLD_W||y<0||y>=WORLD_H)return true;var b=world[x][y];return b!=BLOCKS.AIR&&b!=BLOCKS.WATER&&b!=BLOCKS.TORCH&&b!=BLOCKS.LADDER&&b!=BLOCKS.WHEAT1&&b!=BLOCKS.WHEAT2&&b!=BLOCKS.DOOR&&b!=BLOCKS.WHEAT3;}
+function isSolid(x,y){if(x<0||x>=WORLD_W||y<0||y>=WORLD_H)return true;var b=world[x][y];return b!=BLOCKS.AIR&&b!=BLOCKS.WATER&&b!=BLOCKS.TORCH&&b!=BLOCKS.LADDER&&b!=BLOCKS.WHEAT1&&b!=BLOCKS.WHEAT2&&b!=BLOCKS.WHEAT3;}
 function updatePlayer(dt){
-// Door auto-open for player
+// Door auto-open for player: only open closed doors when player is moving into them
 var ptx1=Math.floor(player.x/TILE),ptx2=Math.floor((player.x+player.w)/TILE);
 var pty1=Math.floor(player.y/TILE),pty2=Math.floor((player.y+player.h)/TILE);
-for(var ddx=ptx1;ddx<=ptx2;ddx++){for(var ddy=pty1;ddy<=pty2;ddy++){if(isDoorBlock(ddx,ddy)){openDoor(ddx,ddy);}}}
+for(var ddx=ptx1;ddx<=ptx2;ddx++){for(var ddy=pty1;ddy<=pty2;ddy++){if(isDoorBlock(ddx,ddy)&&!isDoorOpen(ddx,ddy)){openDoor(ddx,ddy);}}}
 // Also check 1 tile ahead based on movement direction
 var aheadX=Math.floor((player.x+(player.vx>0?player.w+2:-2))/TILE);
-for(var ddy2=pty1;ddy2<=pty2;ddy2++){if(isDoorBlock(aheadX,ddy2)){openDoor(aheadX,ddy2);}}
+for(var ddy2=pty1;ddy2<=pty2;ddy2++){if(isDoorBlock(aheadX,ddy2)&&!isDoorOpen(aheadX,ddy2)){openDoor(aheadX,ddy2);}}
 
 var spd=1.2,grav=0.3,jumpF=-4.5,maxFall=5;
 if(isOnLadder()){grav=0.05;maxFall=1;if(keys.up)player.vy=-1.5;if(keys.down)player.vy=1;}
@@ -374,15 +377,15 @@ function mineBlock(){
 var bx=cursorX,by=cursorY;
 if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)return;
 var b=world[bx][by];if(b==BLOCKS.FURNACE){openFurnace();return;}
-if(b==BLOCKS.BED){if(isNight){isNight=false;dayTimer=0;showGameMsg('Sleeping...');player.spawnX=bx*TILE;player.spawnY=(by-1)*TILE;}else{showGameMsg('Can only sleep at night');}return;}if(b==BLOCKS.CHEST){openChest(bx,by);return;}
+if(b==BLOCKS.BED){if(isNight){isNight=false;dayTime=0;showGameMsg('Sleeping...');player.spawnX=bx*TILE;player.spawnY=(by-1)*TILE;}else{showGameMsg('Can only sleep at night');}return;}if(b==BLOCKS.CHEST){openChest(bx,by);return;}
 if(b==BLOCKS.AIR||b==BLOCKS.WATER||b==BLOCKS.BEDROCK)return;
 var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);
 var dist=Math.abs(bx-px)+Math.abs(by-py);if(dist>MINE_RANGE_VAL)return;
 playSound('hit');
-var req=MINE_REQ[b];if(req){var hid=getHeldItem().id;var isPick=(hid>=101&&hid<=104);var tl=isPick?getToolTierLevel(hid):0;if(tl<req){var tierNames={1:'wooden',2:'stone',3:'iron',4:'diamond'};showGameMsg('Need '+tierNames[req]+' pickaxe!');return;}}
+var req=MINE_REQ[b];if(req&&gameMode!=='creative'){var hid=getHeldItem().id;var isPick=(hid>=101&&hid<=104);var tl=isPick?getToolTierLevel(hid):0;if(tl<req){var tierNames={1:'wooden',2:'stone',3:'iron',4:'diamond'};showGameMsg('Need '+tierNames[req]+' pickaxe!');return;}}
 var hard=BLOCK_HEALTH[b]||HARDNESS[b]||1;
 var held=getHeldItem();var power=1;var heldId=held.id;var isPickHeld=(heldId>=101&&heldId<=104);var isAxeHeld=(heldId==109||heldId==117||heldId==118||heldId==119);var isShovelHeld=(heldId==110||heldId==120||heldId==121||heldId==122);
-if(held.id>=100&&TOOL_POWER[held.id])power=TOOL_POWER[held.id];TOOL_POWER[126]=2;TOOL_POWER[131]=3;TOOL_POWER[132]=5;TOOL_POWER[133]=7;var STONE_BLOCKS=[3,7,8,9,10,12,18];var WOOD_BLOCKS=[5,6,11];var DIRT_BLOCKS=[1,2,4,20,21,25];if(isPickHeld&&STONE_BLOCKS.indexOf(b)>=0)power*=1.5;else if(isAxeHeld&&WOOD_BLOCKS.indexOf(b)>=0)power*=1.5;else if(isShovelHeld&&DIRT_BLOCKS.indexOf(b)>=0)power*=1.5;if(isPickHeld&&PICKAXE_SPEED[heldId])power*=PICKAXE_SPEED[heldId];
+if(held.id>=100&&TOOL_POWER[held.id])power=TOOL_POWER[held.id];var STONE_BLOCKS=[3,7,8,9,10,12,18];var WOOD_BLOCKS=[5,6,11];var DIRT_BLOCKS=[1,2,4,20,21,25];if(isPickHeld&&STONE_BLOCKS.indexOf(b)>=0)power*=1.5;else if(isAxeHeld&&WOOD_BLOCKS.indexOf(b)>=0)power*=1.5;else if(isShovelHeld&&DIRT_BLOCKS.indexOf(b)>=0)power*=1.5;if(isPickHeld&&PICKAXE_SPEED[heldId])power*=PICKAXE_SPEED[heldId];
 if(gameMode=="creative"){miningProgress=hard;}else{miningProgress+=power*0.05;}
 if(miningProgress>=hard){
 miningProgress=0;
@@ -902,8 +905,8 @@ var dx=x*TILE-camX,dy=y*TILE-camY;
 ctx.globalAlpha=1.0;var b=world[x][y];if(b==BLOCKS.AIR){var surfH=(heightMap[x]!=null?heightMap[x]:SEA);if(y>surfH){ctx.fillStyle='#111';ctx.fillRect(dx,dy,TILE,TILE);}continue;}
 ctx.fillStyle=BCOLORS[b]||'#f0f';
 if(b==BLOCKS.WATER){ctx.fillStyle='#3366CC';ctx.globalAlpha=0.5;ctx.fillRect(dx,dy,TILE,TILE);ctx.globalAlpha=1.0;}
-if(b==BLOCKS.DOOR){ctx.fillStyle=doorStates[x+','+y]?'#c4a060':'#8B4513';ctx.fillRect(dx+2,dy,TILE-4,TILE);ctx.fillStyle='#654321';ctx.fillRect(dx+TILE/2-1,dy+TILE/3,2,2);}
-if(b==BLOCKS.TORCH){ctx.fillStyle='rgba(255,200,50,0.3)';ctx.fillRect((x-1)*TILE-camX,(y-1)*TILE-camY,3*TILE,3*TILE);ctx.fillStyle='#8B5A2B';ctx.fillRect(dx+3,dy+2,2,6);ctx.fillStyle='#FFD700';ctx.fillRect(dx+2,dy,4,3);}
+else if(b==BLOCKS.DOOR){var isOpen=isDoorOpen(x,y);if(isOpen){ctx.fillStyle='rgba(140,100,50,0.25)';ctx.fillRect(dx,dy,TILE,TILE);ctx.fillStyle='#c4a060';ctx.fillRect(dx+2,dy+TILE/2,TILE-4,TILE/2);ctx.fillStyle='#8B6914';ctx.fillRect(dx+TILE/2-1,dy+TILE/2,1,TILE/2);ctx.fillStyle='#FFD700';ctx.fillRect(dx+TILE/2+1,dy+TILE/2+2,2,2);}else{ctx.fillStyle='#8B4513';ctx.fillRect(dx+1,dy+1,TILE-2,TILE-1);ctx.fillStyle='#654321';ctx.fillRect(dx+TILE/2-1,dy+TILE/3,2,2);ctx.fillStyle='#A0522D';ctx.fillRect(dx+2,dy+2,2,2);ctx.fillRect(dx+TILE-4,dy+4,2,2);}}
+else if(b==BLOCKS.TORCH){ctx.fillStyle='rgba(255,200,50,0.3)';ctx.fillRect((x-1)*TILE-camX,(y-1)*TILE-camY,3*TILE,3*TILE);ctx.fillStyle='#8B5A2B';ctx.fillRect(dx+3,dy+2,2,6);ctx.fillStyle='#FFD700';ctx.fillRect(dx+2,dy,4,3);}
 else if(b==BLOCKS.LEAVES){ctx.fillRect(dx,dy,TILE,TILE);ctx.fillStyle='#196619';ctx.fillRect(dx+1,dy+1,2,2);ctx.fillRect(dx+5,dy+4,2,2);}
 else{ctx.fillRect(dx,dy,TILE,TILE);
 // Block detail
@@ -1075,7 +1078,11 @@ if(gameMode=='creative')toggleFly();else showCrafting();
 return;
 }
 lastSideClickTime=now;
-var bx=cursorX,by=cursorY;if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H){if(world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER&&world[bx][by]!=BLOCKS.BEDROCK){mineBlock();}else{var hi=getHeldItem();if(hi.id==126){useHoe(cursorX,cursorY);}else if(hi.id==123&&plantSeed(cursorX,cursorY)){if(gameMode!='creative'){hi.count--;if(hi.count<=0){hi.id=0;hi.count=0;}}}else{placeBlock();}}}
+var bx=cursorX,by=cursorY;if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H){
+if(world[bx][by]==BLOCKS.DOOR){toggleDoor(bx,by);r1Vibrate(15);}
+else if(world[bx][by]!=BLOCKS.AIR&&world[bx][by]!=BLOCKS.WATER&&world[bx][by]!=BLOCKS.BEDROCK){mineBlock();}
+else{var hi=getHeldItem();if(hi.id==126){useHoe(cursorX,cursorY);}else if(hi.id==123&&plantSeed(cursorX,cursorY)){if(gameMode!='creative'){hi.count--;if(hi.count<=0){hi.id=0;hi.count=0;}}}else{placeBlock();}}
+}
 });
 // Touch controls
 var touchMode='move';
@@ -1121,7 +1128,7 @@ function resumeGame(){gameState='playing';document.getElementById('pause-menu').
 function gameLoop(now){
 dt=(now-lastTime)/16.67;if(dt>3)dt=3;lastTime=now;
 if(gameState=='playing'){
-updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updateCrops(dt);updateDayNight();updateWeather();spawnEnemies();spawnCaveEnemies();spawnSheep();updateEntities(dt);updateAutoLock();updateAutoCombat(dt);updateDroppedItems(dt);
+updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updateCrops(dt);updateDayNight();updateWeather();updateDoors(dt);spawnEnemies();spawnCaveEnemies();spawnSheep();updateEntities(dt);updateAutoLock();updateAutoCombat(dt);updateDroppedItems(dt);
 if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
 render();renderDroppedItems(ctx,camX,camY);renderAutoLock();renderAutoCombat(ctx,camX,camY);renderWeather();updateContextPanel();renderHUD();
 if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
@@ -1145,7 +1152,8 @@ var rect=canvas.getBoundingClientRect();
 var mx=t.clientX-rect.left,my=t.clientY-rect.top;
 cursorX=Math.floor((mx+camX)/TILE);cursorY=Math.floor((my+camY)/TILE);
 if(cursorX>=0&&cursorX<WORLD_W&&cursorY>=0&&cursorY<WORLD_H){
-if(world[cursorX][cursorY]!=BLOCKS.AIR&&world[cursorX][cursorY]!=BLOCKS.WATER)mineBlock();
+if(world[cursorX][cursorY]==BLOCKS.DOOR){toggleDoor(cursorX,cursorY);r1Vibrate(15);}
+else if(world[cursorX][cursorY]!=BLOCKS.AIR&&world[cursorX][cursorY]!=BLOCKS.WATER)mineBlock();
 else placeBlock();
 }
 },{passive:false});
@@ -1373,6 +1381,7 @@ function loadMap(name) {
   lastTime=performance.now();
   requestAnimationFrame(gameLoop);
 }
+</script>
 <div id="save-screen"><h3>SAVE GAME</h3><div id="save-slots-list"></div><button class="save-menu-btn" onclick="doSaveGame()">Save New</button><button class="save-menu-btn cancel" onclick="closeSaveScreen()">Cancel</button></div>
 <div id="load-screen"><h3>LOAD GAME</h3><div id="load-slots-list"></div><button class="save-menu-btn cancel" onclick="closeLoadScreen()" ontouchend="event.preventDefault();closeLoadScreen()">Back</button></div>
 <button id="save-btn-hud" onclick="openSaveScreen()" style="display:none;">SAVE</button>
