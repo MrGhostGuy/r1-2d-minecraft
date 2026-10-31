@@ -75,13 +75,31 @@ var accessibilityMode=false;
 var cameraSmoothingEnabled=true;
 var toastHistory=[];
 var toastHistoryLimit=40;
-var attackCooldownMs=320;
+var attackCooldownMs=300;
 var weaponReach=1.5;
 var lastAttackTime=0;
 var pointerCancelled=false;
+// Combat balance helpers (pure-ish, deterministic)
+var ATTACK_COOLDOWN_MS=300;
+var SWORD_REACH_BLOCKS={105:1.4,106:1.5,107:1.6,108:1.8};
+var SWORD_KNOCKBACK={105:1.8,106:2.2,107:2.6,108:3.0};
+var INVULN_FRAMES=45;
+var PLAYER_KNOCKBACK_MULT=1.0;
+function getSwordDamage(id){if(SWORD_DMG[id])return SWORD_DMG[id];return id>=105&&id<=108?1:0;}
+function getSwordReachBlocks(id){if(SWORD_REACH_BLOCKS[id])return SWORD_REACH_BLOCKS[id];return weaponReach;}
+function getAttackCooldownMs(){return attackCooldownMs||ATTACK_COOLDOWN_MS;}
+function isInAttackRange(dxBlocks,dyBlocks,reachBlocks){var r=(typeof reachBlocks==='number'?reachBlocks:weaponReach);return Math.abs(dxBlocks)<=r && Math.abs(dyBlocks)<=r;}
+function computeKnockbackForSword(id){return SWORD_KNOCKBACK[id]||2.0;}
+function canDamagePlayerNow(){return (player.invulnTimer||0)<=0;}
+function applyPlayerInvulnerability(frames){player.invulnTimer=(typeof frames==='number'?frames:INVULN_FRAMES);}
+// aliases for tests
+function combatDamage(heldId){return getSwordDamage(heldId);}
+function combatReach(heldId){return getSwordReachBlocks(heldId);}
+function combatCooldownMs(){return getAttackCooldownMs();}
+function isAttackInRange(dx,dy,reach){return isInAttackRange(dx,dy,reach);}
 var touchState={active:false,startX:0,startY:0,moved:false,longPressed:false,joystickX:0,joystickY:0};
 var camTargetX=0,camTargetY=0;
-var player={x:128,y:0,vx:0,vy:0,w:6,h:12,onGround:false,hp:20,maxHp:20,air:10,selectedSlot:0,mining:0,mineX:-1,mineY:-1,dir:1,attacking:0,hunger:20,maxHunger:20,hungerTimer:0,flying:false,fallDist:0,lastY:0,spawnX:128,spawnY:0};
+var player={x:128,y:0,vx:0,vy:0,w:6,h:12,onGround:false,hp:20,maxHp:20,air:10,selectedSlot:0,mining:0,mineX:-1,mineY:-1,dir:1,attacking:0,hunger:20,maxHunger:20,hungerTimer:0,flying:false,fallDist:0,lastY:0,spawnX:128,spawnY:0,invulnTimer:0};
 var inventory=[];for(var i=0;i<36;i++)inventory.push({id:0,count:0});
 var hotbar=9,cursorX=15,cursorY=15;
 var dayTime=0,dayLength=12000,isNight=false;var heightMap=[];
@@ -93,9 +111,38 @@ var WEATHER_MIN_CLEAR=1800,WEATHER_MAX_CLEAR=6000;
 var WEATHER_MIN_STORM=600,WEATHER_MAX_STORM=2400;
 var entities=[],particles=[],arrows=[];
 // === ENEMY SPAWN SETTINGS ===
-var MAX_NIGHT_ENEMIES=3,MAX_CAVE_ENEMIES=3,MAX_SHEEP=4,MAX_TOTAL_ENTITIES=8;
-var NIGHT_SPAWN_CHANCE=0.003,CAVE_SPAWN_CHANCE=0.004,SHEEP_SPAWN_CHANCE=0.002;
+var MAX_NIGHT_ENEMIES=2,MAX_CAVE_ENEMIES=3,MAX_SHEEP=4,MAX_TOTAL_ENTITIES=7;
+var NIGHT_SPAWN_CHANCE=0.0022,CAVE_SPAWN_CHANCE=0.0035,SHEEP_SPAWN_CHANCE=0.0025;
 var NIGHT_SPAWN_COOLDOWN=0,caveSpawnCD=0;
+// Protected building blocks that should not be spawn points (or nearby)
+var PROTECTED_BLOCKS=[BLOCKS.BED,BLOCKS.CHEST,BLOCKS.FURNACE,BLOCKS.DOOR];
+var MIN_NIGHT_SPAWN_DISTANCE=12;
+var MAX_NIGHT_SPAWN_DISTANCE=22;
+var NIGHT_ROOF_OPEN_TILES=3;
+// Pure spawn-rule helpers
+function distance2D(ax,ay,bx,by){var dx=ax-bx,dy=ay-by;return Math.sqrt(dx*dx+dy*dy);}
+function isProtectedBlockType(id){return PROTECTED_BLOCKS.indexOf(id)>=0;}
+function countNightEnemies(entitiesArr){var n=0;for(var i=0;i<entitiesArr.length;i++){var t=entitiesArr[i].type;if(t==='zombie'||t==='skeleton'||t==='creeper')n++;}return n;}
+function countCaveEnemies(entitiesArr){var n=0;for(var i=0;i<entitiesArr.length;i++){var t=entitiesArr[i].type;if(t==='cave_spider'||t==='cave_skeleton')n++;}return n;}
+function countEntitiesByType(entitiesArr,type){var n=0;for(var i=0;i<entitiesArr.length;i++)if(entitiesArr[i].type===type)n++;return n;}
+function isNightMobSpawnAllowed(opts){
+// opts: {isNight, nightEnemyCount, maxNight, totalEntities, maxTotal, sheltered, onSurfaceExposed, cooldown, rngRoll, chance, protectedNearby}
+if(!opts)return false;
+if(!opts.isNight)return false;
+if(opts.nightEnemyCount>=opts.maxNight)return false;
+if(opts.totalEntities>=opts.maxTotal)return false;
+if(opts.cooldown>0)return false;
+if(opts.sheltered && (opts.rngRoll||0)<0.55)return false;
+if(opts.protectedNearby)return false;
+if(!opts.onSurfaceExposed)return false;
+if((typeof opts.rngRoll==='number') && (typeof opts.chance==='number') && opts.rngRoll>opts.chance)return false;
+return true;
+}
+// Aliases
+function canSpawnNightMob(o){return isNightMobSpawnAllowed(o);}
+function isSpawnProtectedNearby(blocks){ // blocks: array of block ids within radius
+for(var i=0;i<blocks.length;i++)if(isProtectedBlockType(blocks[i]))return true;return false;
+}
 // === SOUND SYSTEM ===
 var audioCtx=null;
 function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
@@ -186,7 +233,7 @@ for(var ddx=ptx1;ddx<=ptx2;ddx++){for(var ddy=pty1;ddy<=pty2;ddy++){if(isDoorBlo
 var aheadX=Math.floor((player.x+(player.vx>0?player.w+2:-2))/TILE);
 for(var ddy2=pty1;ddy2<=pty2;ddy2++){if(isDoorBlock(aheadX,ddy2)&&!isDoorOpen(aheadX,ddy2)){openDoor(aheadX,ddy2);}}
 
-var spd=1.2,grav=0.3,jumpF=-4.5,maxFall=5;
+var spd=1.3,grav=0.32,jumpF=-4.6,maxFall=5.2;
 if(isOnLadder()){grav=0.05;maxFall=1;if(keys.up)player.vy=-1.5;if(keys.down)player.vy=1;}
 if(player.flying){grav=0;player.vy=0;if(keys.up)player.vy=-2;if(keys.down)player.vy=2;}
 applyFallDamage();
@@ -196,6 +243,10 @@ else player.vx*=0.6;
 if(keys.up&&player.onGround)player.vy=jumpF;
 player.vy+=grav;
 if(player.vy>maxFall)player.vy=maxFall;
+// Invulnerability frames (decayed per dt)
+if(player.invulnTimer>0)player.invulnTimer=Math.max(0,player.invulnTimer-dt);
+// Smooth knockback damping (only when not actively walking)
+if(player.knockbackX && !keys.left && !keys.right){player.vx=player.knockbackX;player.knockbackX*=0.7;if(Math.abs(player.knockbackX)<0.05)player.knockbackX=0;} else if(keys.left||keys.right){player.knockbackX=0;}
 // Push player out of solid blocks
 var ptx1=Math.floor(player.x/TILE),ptx2=Math.floor((player.x+player.w-1)/TILE);
 var pty1=Math.floor(player.y/TILE),pty2=Math.floor((player.y+player.h-1)/TILE);
@@ -260,7 +311,7 @@ function mineBlock(){
 var bx=cursorX,by=cursorY;
 if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)return;
 var b=world[bx][by];if(b==BLOCKS.FURNACE){openFurnace();return;}
-if(b==BLOCKS.BED){if(isNight){isNight=false;dayTime=0;showGameMsg('Sleeping...');player.spawnX=bx*TILE;player.spawnY=(by-1)*TILE;}else{showGameMsg('Can only sleep at night');}return;}if(b==BLOCKS.CHEST){openChest(bx,by);return;}
+if(b==BLOCKS.BED){if(isNight){if(!isPlayerSheltered()){showGameMsg('Need sheltered safe ground to sleep');return;}isNight=false;dayTime=0;showGameMsg('Sleeping...');player.spawnX=bx*TILE;player.spawnY=(by-1)*TILE;player.hp=Math.min(player.maxHp,player.hp+4);player.hunger=Math.min(player.maxHunger,player.hunger+4);}else{showGameMsg('Can only sleep at night');}return;}if(b==BLOCKS.CHEST){openChest(bx,by);return;}
 if(b==BLOCKS.AIR||b==BLOCKS.WATER||b==BLOCKS.BEDROCK)return;
 var px=Math.floor(player.x/TILE),py=Math.floor(player.y/TILE);
 var dist=Math.abs(bx-px)+Math.abs(by-py);if(dist>MINE_RANGE_VAL)return;
@@ -311,19 +362,50 @@ if(gameMode!="creative"){held.count--;if(held.count<=0){held.id=0;held.count=0;}
 }
 }
 // === ENEMIES ===
+function isSurfaceExposedForSpawn(ex,groundTileY){
+// require several open tiles above ground (not inside a building/roof)
+for(var dy=groundTileY-NIGHT_ROOF_OPEN_TILES;dy<groundTileY;dy++){
+if(dy<0)return true;
+if(isSolid(ex,dy))return false;
+}
+return true;
+}
+function isNearProtectedStructure(ex,groundTileY){
+for(var dx=-4;dx<=4;dx++){
+for(var dy=-3;dy<=3;dy++){
+var bx=ex+dx,by=groundTileY+dy;
+if(bx<0||bx>=WORLD_W||by<0||by>=WORLD_H)continue;
+var b=world[bx][by];
+if(PROTECTED_BLOCKS.indexOf(b)>=0)return true;
+}}
+return false;
+}
 function spawnEnemies(){
 if(gameMode==='creative')return;
 if(NIGHT_SPAWN_COOLDOWN>0){NIGHT_SPAWN_COOLDOWN--;return;}
-var nightCount=0;for(var i=0;i<entities.length;i++){var t=entities[i].type;if(t==='zombie'||t==='skeleton'||t==='creeper')nightCount++;}
+var nightCount=countNightEnemies(entities);
+// quick guards
+if(!isNight)return;
 if(nightCount>=MAX_NIGHT_ENEMIES)return;
 if(entities.length>=MAX_TOTAL_ENTITIES)return;
-if(Math.random()>NIGHT_SPAWN_CHANCE)return;
-if(!isNight)return;
-if(isPlayerSheltered()&&Math.random()<0.55)return;
-var ex=player.x/TILE+((Math.random()>0.5?1:-1)*(12+Math.random()*8));
+var sheltered=isPlayerSheltered();
+if(sheltered && Math.random()<0.55)return;
+var roll=Math.random();
+if(roll>NIGHT_SPAWN_CHANCE)return;
+// cooldown guard passed above (0)
+if(!isNightMobSpawnAllowed({isNight:isNight,nightEnemyCount:nightCount,maxNight:MAX_NIGHT_ENEMIES,totalEntities:entities.length,maxTotal:MAX_TOTAL_ENTITIES,sheltered:false,onSurfaceExposed:true,cooldown:0,rngRoll:1,chance:1,protectedNearby:false}))return;
+
+var ex=player.x/TILE+((Math.random()>0.5?1:-1)*(MIN_NIGHT_SPAWN_DISTANCE+Math.random()*(MAX_NIGHT_SPAWN_DISTANCE-MIN_NIGHT_SPAWN_DISTANCE)));
 ex=Math.floor(ex);if(ex<1||ex>=WORLD_W-1)return;
-var ey=0;for(var y=0;y<WORLD_H;y++){if(isSolid(ex,y)){ey=(y-2)*TILE;break;}}
+var groundTileY=-1;for(var y=0;y<WORLD_H;y++){if(isSolid(ex,y)){groundTileY=y;break;}}
+if(groundTileY<=0)return;
+var ey=(groundTileY-2)*TILE;
 if(ey<=0)return;
+if(!isSurfaceExposedForSpawn(ex,groundTileY))return;
+if(isNearProtectedStructure(ex,groundTileY))return;
+var distTiles=Math.abs(ex-(player.x/TILE));
+if(distTiles<MIN_NIGHT_SPAWN_DISTANCE)return;
+
 var r=Math.random();var type=r<0.35?'creeper':r<0.7?'zombie':'skeleton';
 var ehp=type==='zombie'?18:type==='creeper'?14:10;
 entities.push({type:type,x:ex*TILE,y:ey,vx:0,vy:0,w:6,h:12,hp:ehp,maxHp:ehp,dir:1,atkTimer:0,color:type==='zombie'?'#0a0':type==='creeper'?'#0f0':'#ddd',fuseTimer:0,fuseActive:false,fuseMax:90});
@@ -370,8 +452,11 @@ if(!isNight&&e.type!=='creeper'&&(e.type=='skeleton'||e.type=='cave_skeleton'||e
 var dx=player.x-e.x;
 var spd=e.type=='creeper'?0.6:e.type=='skeleton'?0.7:e.type=='cave_spider'?1.0:e.type=='cave_skeleton'?0.7:0.8;
 if(e.passive){
-if(Math.random()<0.02)e.dir=Math.random()<0.5?-1:1;
-e.vx=e.dir*0.3;
+// flee from nearby hostile mobs
+var fh=null,fhd=999;
+for(var fi=0;fi<entities.length;fi++){var oe=entities[fi];if(oe===e||oe.passive)continue;var fd=Math.abs(oe.x-e.x);if(fd<fhd){fhd=fd;fh=oe;}}
+if(fh&&fhd<6*TILE){e.dir=e.x>fh.x?1:-1;e.vx=e.dir*0.9;}
+else{if(Math.random()<0.02)e.dir=Math.random()<0.5?-1:1;e.vx=e.dir*0.3;}
 }else{
 var eTileX=Math.floor(e.x/TILE),eTileY=Math.floor(e.y/TILE);
 var pTileX=Math.floor(player.x/TILE),pTileY=Math.floor(player.y/TILE);
@@ -394,10 +479,15 @@ if(e.type=='skeleton'||e.type=='cave_skeleton'){
 var sdx=player.x-e.x,sdy=player.y-e.y;
 var sdist=Math.sqrt(sdx*sdx+sdy*sdy);
 if(sdist<15*TILE&&sdist>3*TILE){
+var sObs=null;try{sObs=findFirstBlockInPath(Math.floor(e.x/TILE),Math.floor(e.y/TILE),Math.floor(player.x/TILE),Math.floor(player.y/TILE));}catch(err){sObs=null;}
+if(!sObs){
 e.atkTimer=(e.atkTimer||0)+dt;
 if(e.atkTimer>2){e.atkTimer=0;
 if(typeof arrows!=='undefined')arrows.push({x:e.x,y:e.y+4,vx:sdx/sdist*3,vy:sdy/sdist*3,life:120,fromEnemy:true});
-}}}
+}
+}
+}
+}
 // Creeper fuse and hit-and-retreat behavior
 if(e.type=='creeper'){
 var cdist=Math.abs(player.x-e.x);
@@ -427,11 +517,10 @@ var adx=Math.abs(player.x-e.x),ady=Math.abs(player.y-e.y);
 if(adx<10&&ady<14){
 e.atkTimer=(e.atkTimer||0)+dt;
 if(e.atkTimer>1){e.atkTimer=0;
-if(gameMode=='survival'){player.hp-=2;if(player.hp<=0)gameOver();player.vy=-2;player.vx=(player.x>e.x?1:-1)*2;}
-}}}
+if(gameMode=='survival' && (player.invulnTimer||0)<=0){player.hp=Math.max(0,player.hp-2);applyPlayerInvulnerability(INVULN_FRAMES);if(player.hp<=0)gameOver();player.vy=-2;player.knockbackX=(player.x>e.x?1:-1)*3;} }}}
 // Remove if too far or dead
 if(e.hp<=0||Math.abs(e.x-player.x)>300*TILE){
-if(e.hp<=0){var loot;if(e.type=='sheep'){addItem(ITEMS.WOOL,Math.floor(Math.random()*2)+1);loot=0;}
+if(e.hp<=0){var loot;if(e.type=='sheep'){addItem(ITEMS.WOOL,Math.floor(Math.random()*2)+1);if(Math.random()<0.65)addItem(ITEMS.RAW_PORK,1);loot=0;}
 else if(e.type=='cave_spider'){addItem(ITEMS.STRING,Math.floor(Math.random()*2)+1);loot=0;}
 else if(e.type=='cave_skeleton'||e.type=='skeleton'){addItem(ITEMS.BONE,Math.floor(Math.random()*2)+1);loot=0;}
 else if(e.type=='zombie'){addItem(ITEMS.ROTTEN_FLESH,Math.floor(Math.random()*2)+1);loot=0;}
@@ -451,7 +540,7 @@ if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H&&isSolid(bx,by)){arrows.splice(i,1);cont
 if(a.fromEnemy && gameState=='playing'){
 var dx=Math.abs(a.x-(player.x+player.w/2)), dy=Math.abs(a.y-(player.y+player.h/2));
 if(dx<6 && dy<8){
-  if(gameMode=='survival'){player.hp=Math.max(0,player.hp-1);if(player.hp<=0)gameOver();player.vy=-1.5;player.vx=(player.x>a.x?1:-1)*1.5;r1Vibrate(35);showGameMsg('Hit by arrow!');}
+  if(gameMode=='survival' && (player.invulnTimer||0)<=0){player.hp=Math.max(0,player.hp-1);applyPlayerInvulnerability(30);if(player.hp<=0)gameOver();player.vy=-1.5;player.knockbackX=(player.x>a.x?1:-1)*2;r1Vibrate(35);showGameMsg('Hit by arrow!');}
   arrows.splice(i,1);continue;
 }
 }
@@ -460,17 +549,17 @@ if(dx<6 && dy<8){
 function attackEntity(){
 var now=Date.now();
 if(now-lastAttackTime<attackCooldownMs){r1Toast('Attack cooldown',300);return;}
-var held=getHeldItem();var dmg=1;
-if(held.id>=105&&held.id<=108)dmg=held.id==105?4:held.id==106?5:held.id==107?6:8;
-var reach=weaponReach;
-if(held.id===108)reach=1.8;else if(held.id===107)reach=1.6;
+var held=getHeldItem();var dmg=getSwordDamage(held.id);
+if(dmg<=0)dmg=1;
+var reach=getSwordReachBlocks(held.id);
 var range=TILE*reach;
+var kb=computeKnockbackForSword(held.id);
 for(var i=0;i<entities.length;i++){
 var e=entities[i];
 if(!e||typeof e!=='object'||typeof e.hp!=='number')continue;
 var adx=Math.abs(player.x-e.x),ady=Math.abs(player.y-e.y);
-if(adx<range&&ady<range){
-e.hp-=dmg;e.vx=(e.x>player.x?2:-2);e.vy=-2;if(e.type=='creeper'){e.wasHit=true;e.creeperHitCount=(e.creeperHitCount||0)+1;e.retreatTimer=0;e.fuseActive=true;e.fuseTimer=Math.max(e.fuseTimer||0,e.fuseMax*0.3);}
+if(isInAttackRange(adx/TILE,ady/TILE,reach)){
+e.hp-=dmg;e.vx=(e.x>player.x?kb:-kb);e.vy=-2;if(e.type=='creeper'){e.wasHit=true;e.creeperHitCount=(e.creeperHitCount||0)+1;e.retreatTimer=0;e.fuseActive=true;e.fuseTimer=Math.max(e.fuseTimer||0,e.fuseMax*0.3);}
 showDamageNumber(dmg,e.x,e.y);r1Vibrate(50);lastAttackTime=now;break;
 }}
 }
@@ -579,12 +668,18 @@ else if(type=='shovel'){g.fillRect(6,6,2,2);g.fillRect(8,4,2,2);g.fillRect(4,10,
 spriteCache[key]=oc;ctx2.drawImage(oc,x,y,w,h);}
 
 // === HUNGER & SURVIVAL MECHANICS ===
+var HUNGER_DRAIN_FRAMES=240;
+var STARVATION_DAMAGE=0.4;
+var REGEN_HUNGER_THRESHOLD=16;
+var REGEN_AMOUNT=0.5;
+function getHungerDrainFrames(){return HUNGER_DRAIN_FRAMES;}
+function getStarvationDamage(){return STARVATION_DAMAGE;}
 function updateHunger(dt){
 if(gameMode!='survival')return;
 player.hungerTimer=(player.hungerTimer||0)+dt;
-if(player.hungerTimer>180){player.hungerTimer=0;if(player.hunger>0)player.hunger=Math.max(0,player.hunger-0.5);
-if(player.hunger<=0&&player.hp>0){player.hp=Math.max(0,player.hp-0.25);if(player.hp<=0)gameOver();}
-if(player.hunger>=16&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+0.5);}
+if(player.hungerTimer>HUNGER_DRAIN_FRAMES){player.hungerTimer=0;if(player.hunger>0)player.hunger=Math.max(0,player.hunger-0.5);
+if(player.hunger<=0&&player.hp>0){player.hp=Math.max(0,player.hp-STARVATION_DAMAGE);if(player.hp<=0)gameOver();}
+if(player.hunger>=REGEN_HUNGER_THRESHOLD&&player.hp<player.maxHp){player.hp=Math.min(player.maxHp,player.hp+REGEN_AMOUNT);}
 }
 }
 function toggleFly(){
@@ -759,10 +854,10 @@ for(var p=0;p<2;p++)particles.push({x:bx*TILE+4,y:by*TILE+4,vx:(Math.random()-0.
 }}
 var pdx=player.x-e.x,pdy=player.y-e.y;
 var pdist=Math.sqrt(pdx*pdx+pdy*pdy);
-if(pdist<rad*TILE*1.5&&gameMode=='survival'){
+if(pdist<rad*TILE*1.5&&gameMode=='survival'&&(player.invulnTimer||0)<=0){
 var dmg=Math.max(1,Math.floor(14*(1-pdist/(rad*TILE*1.5))));
-player.hp-=dmg;if(player.hp<=0)gameOver();
-player.vy=-3;player.vx=(pdx>0?1:-1)*2;
+player.hp=Math.max(0,player.hp-dmg);applyPlayerInvulnerability(INVULN_FRAMES);if(player.hp<=0)gameOver();
+player.vy=-3;player.knockbackX=(pdx>0?1:-1)*3;
 }
 for(var p=0;p<15;p++)particles.push({x:e.x+3,y:e.y+6,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,life:25+Math.random()*20,color:['#f00','#f80','#ff0','#fff'][Math.floor(Math.random()*4)]});
 showGameMsg('BOOM!');
@@ -938,15 +1033,19 @@ var coord=document.getElementById('coord-display');if(coord)coord.textContent='X
 
 
 document.addEventListener('click',function(e){if(gameState=='crafting'){var cs=document.getElementById('craft-screen');var rl=document.getElementById('recipe-list');if(!rl.contains(e.target)&&e.target.id!=='craft-close-btn')hideCrafting();}});
+function canCraftRecipe(rec){if(!rec)return false;for(var j=0;j<rec.inp.length;j++){if(countItem(rec.inp[j][0])<rec.inp[j][1])return false;}return true;}
+function getCraftingHint(rec){return getRecipeUnlockHint(rec);}
+function getRecipeHint(rec){return getRecipeUnlockHint(rec);}
+function getRecipeUnlockHint(rec){if(!rec)return '';var miss=[];for(var j=0;j<rec.inp.length;j++){var have=countItem(rec.inp[j][0]);var need=rec.inp[j][1];if(have<need){miss.push((BNAMES[rec.inp[j][0]]||INAMES[rec.inp[j][0]]||rec.inp[j][0])+' '+(need-have)+'/'+need);}}return miss.length?'Missing: '+miss.join(', '):'Ready to craft';}
 function toggleCraftingMenu(){if(gameState=='crafting'){hideCrafting();}else if(gameState=='playing'){showCrafting();}}
 function showCrafting(){
 gameState='crafting';document.getElementById('craft-btn').style.display='none';
 var cs=document.getElementById('craft-screen');cs.style.display='block';
 var rl=document.getElementById('recipe-list');rl.innerHTML='';
 for(var r=0;r<RECIPES.length;r++){
-var rec=RECIPES[r];var canCraft=true;
-for(var j=0;j<rec.inp.length;j++){if(countItem(rec.inp[j][0])<rec.inp[j][1])canCraft=false;}
+var rec=RECIPES[r];var canCraft=canCraftRecipe(rec);
 var div=document.createElement('div');div.className='recipe';
+div.title=getRecipeUnlockHint(rec);
 div.style.opacity=canCraft?'1':'0.4';
 var nm=document.createElement('span');nm.className='r-name';
 nm.textContent=rec.name+' x'+rec.cnt;div.appendChild(nm);
@@ -1081,7 +1180,7 @@ initAudio();
 
 generateWorld();
 if(mode=='creative'){for(var b=1;b<=28;b++)addItem(b,64);for(var t=100;t<=120;t++)addItem(t,64);}
-else{addItem(ITEMS.WOOD_PICK,1);addItem(ITEMS.WOOD_AXE,1);}
+else{addItem(ITEMS.WOOD_PICK,1);addItem(ITEMS.WOOD_AXE,1);addItem(ITEMS.BREAD,3);addItem(ITEMS.RAW_PORK,2);}
 lastTime=performance.now();
 requestAnimationFrame(gameLoop);
 }
@@ -1111,7 +1210,7 @@ chestData={};doorStates={};toolDurability={};
 inventory=[];for(var i=0;i<36;i++)inventory.push({id:0,count:0});
 try{generateWorld();}catch(e){}
 if(gameMode=='creative'){for(var b=1;b<=28;b++)addItem(b,64);for(var t=100;t<=120;t++)addItem(t,64);}
-else{addItem(ITEMS.WOOD_PICK,1);addItem(ITEMS.WOOD_AXE,1);}
+else{addItem(ITEMS.WOOD_PICK,1);addItem(ITEMS.WOOD_AXE,1);addItem(ITEMS.BREAD,3);addItem(ITEMS.RAW_PORK,2);}
 player.x=WORLD_W/2*TILE;
 for(var y=0;y<WORLD_H;y++){if(world[Math.floor(player.x/TILE)][y]!=BLOCKS.AIR&&world[Math.floor(player.x/TILE)][y]!=BLOCKS.WATER){player.y=(y-2)*TILE;break;}}
 camX=player.x-W/2;camY=player.y-H/2;

@@ -69,5 +69,21 @@ assert('corrupt slot dropped', !('corrupt' in after));
 sandbox.r1Toast('hello',10);
 assert('toast history recorded', sandbox.getToastHistory().length>0);
 
+// Combat formula
+assert('combat sword dmg', sandbox.getSwordDamage(108)===8);
+assert('combat reach', Math.abs(sandbox.getSwordReachBlocks(107)-1.6)<0.0001);
+assert('combat range true', sandbox.isInAttackRange(1,1,1.5)===true);
+
+// Spawn rules
+const _ents=[{type:'zombie'},{type:'sheep'}];
+assert('spawn count helper', sandbox.countNightEnemies(_ents)===1);
+assert('spawn protected false', sandbox.isNightMobSpawnAllowed({isNight:true,nightEnemyCount:0,maxNight:2,totalEntities:0,maxTotal:7,sheltered:false,onSurfaceExposed:true,cooldown:0,rngRoll:1,chance:1,protectedNearby:true})===false);
+assert('spawn ok true', sandbox.isNightMobSpawnAllowed({isNight:true,nightEnemyCount:0,maxNight:2,totalEntities:0,maxTotal:7,sheltered:false,onSurfaceExposed:true,cooldown:0,rngRoll:1,chance:1,protectedNearby:false})===true);
+
+// Crafting hint
+sandbox.inventory=[];for(var _i=0;_i<36;_i++)sandbox.inventory.push({id:0,count:0});
+sandbox.addItem(11,5);
+assert('craft hint ready', sandbox.getRecipeUnlockHint({inp:[[11,4]],out:100,cnt:4,name:'Sticks'}).indexOf('Ready')>=0);
+
 console.log('\nRESULT:',pass,'passed,',fail,'failed');
 if(fail>0)process.exit(1);
