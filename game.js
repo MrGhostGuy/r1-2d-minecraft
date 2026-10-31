@@ -752,6 +752,9 @@ function updateAutoLock(){if(!autoLockEnabled||gameState!='playing')return;autoL
 // === AUTO-COMBAT SYSTEM ===
 var autoCombatEnabled=true,autoCombatTarget=null,combatCooldown=0,combatPulse=0,dmgNumbers=[],swingAnim=0;
 var SWORD_IDS=[105,106,107,108],COMBAT_RANGE=16,APPROACH_RANGE=40,WARN_RANGE=60;
+var FOOD_IDS=[115,116,125];
+var TOOL_IDS=[101,102,103,104,109,110,117,118,119,120,121,122,126,131,132,133];
+var PLACEABLE_BLOCK_IDS=[];for(var _pb=1;_pb<=29;_pb++)PLACEABLE_BLOCK_IDS.push(_pb);PLACEABLE_BLOCK_IDS.push(134);
 var THREAT_MODE='closest';
 function toggleAutoCombat(){autoCombatEnabled=!autoCombatEnabled;var b=document.getElementById('combat-btn');if(b){b.textContent=autoCombatEnabled?'AC':'ac';if(!autoCombatEnabled)b.classList.add('off');else b.classList.remove('off');}if(!autoCombatEnabled)autoCombatTarget=null;}
 function hasSword(){var h=getHeldItem();return SWORD_IDS.indexOf(h.id)>=0;}
@@ -1028,25 +1031,69 @@ var hr=Math.floor((dayTime/dayLength)*24);var ampm=hr>=12?'PM':'AM';
 hr=hr%12;if(hr==0)hr=12;
 td.textContent=(isNight?'\u263D':'\u2600')+' '+hr+ampm;
 var coord=document.getElementById('coord-display');if(coord)coord.textContent='X:'+Math.floor(player.x/TILE)+' Y:'+Math.floor(player.y/TILE);
+var hv=document.getElementById('hud-values');if(hv){hv.textContent='HP '+Math.ceil(player.hp)+'/'+player.maxHp+'  Food '+Math.floor(player.hunger)+'/'+player.maxHunger;}
+var body=document.body;
+if(body&&body.classList){
+  var nearMob=false;
+  for(var mi=0;mi<entities.length;mi++){var e=entities[mi];if(!e)continue;if(e.type==='zombie'||e.type==='skeleton'||e.type==='creeper'||e.type==='cave_spider'||e.type==='cave_skeleton'){var ddist=Math.sqrt((player.x-e.x)*(player.x-e.x)+(player.y-e.y)*(player.y-e.y));if(ddist<80){nearMob=true;break;}}}
+  var danger=gameMode!=='creative'&&(player.hp<=player.maxHp*0.35||nearMob);
+  body.classList.toggle('danger',danger);
+}
 }
 // === CRAFTING UI ===
 
 
 document.addEventListener('click',function(e){if(gameState=='crafting'){var cs=document.getElementById('craft-screen');var rl=document.getElementById('recipe-list');if(!rl.contains(e.target)&&e.target.id!=='craft-close-btn')hideCrafting();}});
+var CRAFT_FAV_KEY='r1mc_craft_favs';
+var craftingSearchQuery='';
+var craftingFilter='all';
+var craftingFavorites=[];
+function loadCraftingFavorites(){try{var raw=localStorage.getItem(CRAFT_FAV_KEY);if(raw){var a=JSON.parse(raw);if(Array.isArray(a))craftingFavorites=a.slice();}}catch(e){}}
+function saveCraftingFavorites(){try{localStorage.setItem(CRAFT_FAV_KEY,JSON.stringify(craftingFavorites));}catch(e){}}
+function isCraftingFavorite(rec){if(!rec)return false;return craftingFavorites.indexOf(rec.name)>=0;}
+function toggleCraftingFavorite(rec){if(!rec)return false;if(isCraftingFavorite(rec)){craftingFavorites=craftingFavorites.filter(function(n){return n!==rec.name;});}else{craftingFavorites.push(rec.name);}saveCraftingFavorites();return isCraftingFavorite(rec);}
+function setCraftingSearchQuery(q){craftingSearchQuery=String(q==null?'':q).toLowerCase();return craftingSearchQuery;}
+function setCraftingFilter(m){craftingFilter=(m==='favorites'||m==='craftable')?m:'all';return craftingFilter;}
+function getFilteredRecipes(){
+  var out=[];
+  for(var r=0;r<RECIPES.length;r++){
+    var rec=RECIPES[r];
+    if(!rec)continue;
+    if(craftingSearchQuery){
+      var nm=(rec.name||'').toLowerCase();
+      var costStr='';
+      for(var j=0;j<rec.inp.length;j++){costStr+=(BNAMES[rec.inp[j][0]]||INAMES[rec.inp[j][0]]||rec.inp[j][0])+' '; }
+      if(nm.indexOf(craftingSearchQuery)<0 && costStr.toLowerCase().indexOf(craftingSearchQuery)<0) continue;
+    }
+    if(craftingFilter==='favorites' && !isCraftingFavorite(rec)) continue;
+    if(craftingFilter==='craftable' && !canCraftRecipe(rec)) continue;
+    out.push(rec);
+  }
+  return out;
+}
 function canCraftRecipe(rec){if(!rec)return false;for(var j=0;j<rec.inp.length;j++){if(countItem(rec.inp[j][0])<rec.inp[j][1])return false;}return true;}
 function getCraftingHint(rec){return getRecipeUnlockHint(rec);}
 function getRecipeHint(rec){return getRecipeUnlockHint(rec);}
 function getRecipeUnlockHint(rec){if(!rec)return '';var miss=[];for(var j=0;j<rec.inp.length;j++){var have=countItem(rec.inp[j][0]);var need=rec.inp[j][1];if(have<need){miss.push((BNAMES[rec.inp[j][0]]||INAMES[rec.inp[j][0]]||rec.inp[j][0])+' '+(need-have)+'/'+need);}}return miss.length?'Missing: '+miss.join(', '):'Ready to craft';}
 function toggleCraftingMenu(){if(gameState=='crafting'){hideCrafting();}else if(gameState=='playing'){showCrafting();}}
-function showCrafting(){
-gameState='crafting';document.getElementById('craft-btn').style.display='none';
-var cs=document.getElementById('craft-screen');cs.style.display='block';
-var rl=document.getElementById('recipe-list');rl.innerHTML='';
-for(var r=0;r<RECIPES.length;r++){
-var rec=RECIPES[r];var canCraft=canCraftRecipe(rec);
-var div=document.createElement('div');div.className='recipe';
-div.title=getRecipeUnlockHint(rec);
+function renderCraftingList(){
+var cs=document.getElementById('craft-screen');if(cs)cs.style.display='block';
+var rl=document.getElementById('recipe-list');if(!rl)return;
+rl.innerHTML='';
+var search=document.getElementById('craft-search');if(search){search.value=craftingSearchQuery;search.oninput=function(){setCraftingSearchQuery(this.value);renderCraftingList();};}
+var filter=document.getElementById('craft-filter');if(filter){filter.value=craftingFilter;filter.onchange=function(){setCraftingFilter(this.value);renderCraftingList();};}
+var list=getFilteredRecipes();
+if(list.length===0){
+var empty=document.createElement('div');empty.style.cssText='color:#aaa;font-size:7px;padding:6px;';empty.textContent='No recipes match';rl.appendChild(empty);return;
+}
+for(var i=0;i<list.length;i++){
+var rec=list[i];var canCraft=canCraftRecipe(rec);
+var ridx=RECIPES.indexOf(rec);
+var div=document.createElement('div');div.className='recipe';div.setAttribute('data-ridx',String(ridx));div.title=getRecipeUnlockHint(rec);
 div.style.opacity=canCraft?'1':'0.4';
+var star=document.createElement('span');star.className='r-star';star.textContent=isCraftingFavorite(rec)?'★':'☆';
+(function(recRef,starRef){starRef.onclick=function(e){if(e&&e.stopPropagation)e.stopPropagation();toggleCraftingFavorite(recRef);starRef.textContent=isCraftingFavorite(recRef)?'★':'☆';renderCraftingList();};})(rec,star);
+div.appendChild(star);
 var nm=document.createElement('span');nm.className='r-name';
 nm.textContent=rec.name+' x'+rec.cnt;div.appendChild(nm);
 var cost=document.createElement('span');cost.className='r-cost';
@@ -1054,9 +1101,29 @@ var costStr='';for(var j=0;j<rec.inp.length;j++){
 var iid=rec.inp[j][0];costStr+=(BNAMES[iid]||INAMES[iid]||'?')+'x'+rec.inp[j][1]+' ';
 }
 cost.textContent=costStr;div.appendChild(cost);
-if(canCraft){(function(rec){div.onclick=function(){craftItem(rec);};})(rec);}
+if(canCraft){(function(recRef){div.onclick=function(){craftItem(recRef);};})(rec);}
 rl.appendChild(div);
 }
+}
+function updateCraftingLive(){
+if(gameState!=='crafting')return;
+var rl=document.getElementById('recipe-list');if(!rl||!rl.children)return;
+for(var i=0;i<rl.children.length;i++){
+var div=rl.children[i];if(!div||!div.getAttribute)continue;
+var ridx=parseInt(div.getAttribute('data-ridx'),10);if(!isFinite(ridx)||ridx<0||ridx>=RECIPES.length)continue;
+var rec=RECIPES[ridx];if(!rec)continue;
+var can=canCraftRecipe(rec);
+div.style.opacity=can?'1':'0.4';
+div.title=getRecipeUnlockHint(rec);
+if(can){(function(recRef){div.onclick=function(){craftItem(recRef);};})(rec);}
+else{div.onclick=null;}
+}
+}
+function showCrafting(){
+gameState='crafting';document.getElementById('craft-btn').style.display='none';
+var cs=document.getElementById('craft-screen');if(cs)cs.style.display='block';
+loadCraftingFavorites();
+renderCraftingList();
 }
 function hideCrafting(){gameState='playing';document.getElementById('craft-btn').style.display='block';document.getElementById('zoom-btn').style.display='block';document.getElementById('autolock-btn').style.display='block';document.getElementById('craft-btn').style.display='block';document.getElementById('combat-btn').style.display='block';document.getElementById('craft-screen').style.display='none';}
 function craftItem(rec){
@@ -1105,16 +1172,49 @@ else{var hi=getHeldItem();if(hi.id==126){useHoe(cursorX,cursorY);}else if(hi.id=
 // === R1 LONG-PRESS SUPPORT (side button aliases + touch) ===
 // Save when app is backgrounded/closed on R1.
 try{
-  document.addEventListener('visibilitychange',function(){ if(document.hidden && gameState==='playing'){ try{ saveGame('Autosave'); }catch(e){} } });
-  window.addEventListener('pagehide',function(){ if(gameState==='playing'){ try{ saveGame('Autosave'); }catch(e){} } });
-  window.addEventListener('beforeunload',function(){ if(gameState==='playing'){ try{ saveGame('Autosave'); }catch(e){} } });
+  document.addEventListener('visibilitychange',function(){ if(document.hidden && gameState==='playing'){ try{ saveGame('Autosave'); }catch(e){} } if(!document.hidden){ try{resetGlobalInputs();}catch(e){} } });
+  window.addEventListener('pagehide',function(){ if(gameState==='playing'){ try{ saveGame('Autosave'); }catch(e){} } try{resetGlobalInputs();}catch(e){} });
+  window.addEventListener('beforeunload',function(){ if(gameState==='playing'){ try{ saveGame('Autosave'); }catch(e){} } try{resetGlobalInputs();}catch(e){} });
+  try{window.addEventListener('focus',function(){try{resetGlobalInputs();}catch(e){}});}catch(e){}
 }catch(e){}
 
-function handleR1LongPress(){
+function getContextualLongPressAction(){
+  // Returns a human/action result for long-press in the current context.
+  var bx=cursorX,by=cursorY;
+  if(bx>=0&&bx<WORLD_W&&by>=0&&by<WORLD_H){
+    var b=world[bx][by];
+    if(b===BLOCKS.CHEST)return 'chest';
+    if(b===BLOCKS.FURNACE)return 'furnace';
+    if(b===BLOCKS.DOOR)return 'door';
+  }
+  var held=getHeldItem();
+  if(held&&held.id>0){
+    if(PLACEABLE_BLOCK_IDS.indexOf(held.id)>=0) return 'place';
+    if(FOOD_IDS.indexOf(held.id)>=0)return 'eat';
+    if(SWORD_IDS.indexOf(held.id)>=0)return 'attack';
+    if(TOOL_IDS.indexOf(held.id)>=0)return 'repair';
+    if(held.id===ITEMS.WHEAT_SEEDS)return 'plant';
+  }
+  return 'inventory';
+}
+function performContextualLongPress(){
+  var action=getContextualLongPressAction();
   r1LongPressHandledAt=Date.now();
-  if(gameState=='title'){showHelp();return;}
-  if(gameState=='playing'){toggleInventory();r1Vibrate(25);r1Toast('Inventory',900);return;}
-  if(gameState=='paused'){closeHelp?closeHelp():0;}
+  if(action==='chest'){openChest(cursorX,cursorY);r1Vibrate(20);r1Toast('Chest',800);return 'chest';}
+  if(action==='furnace'){openFurnace();r1Vibrate(20);r1Toast('Furnace',800);return 'furnace';}
+  if(action==='door'){toggleDoor(cursorX,cursorY);r1Vibrate(15);r1Toast('Door',700);return 'door';}
+  if(action==='place'){placeBlock();r1Vibrate(20);r1Toast('Placed',700);return 'place';}
+  if(action==='eat'){eatFood();r1Vibrate(20);return 'eat';}
+  if(action==='attack'){attackEntity();r1Vibrate(15);return 'attack';}
+  if(action==='repair'){repairTool();r1Vibrate(15);return 'repair';}
+  if(action==='plant'){useSeeds();r1Vibrate(15);return 'plant';}
+  toggleInventory();r1Vibrate(25);r1Toast('Inventory',900);return 'inventory';
+}
+function handleR1LongPress(){
+  if(gameState=='title'){showHelp();r1LongPressHandledAt=Date.now();return;}
+  if(gameState=='playing'){return performContextualLongPress();}
+  if(gameState=='paused'){closeHelp&&closeHelp();return;}
+  r1LongPressHandledAt=Date.now();
 }
 function handleSideLongPressCompat(){handleR1LongPress();}
 ['sideLongPress','longPress','sideHold','longPressStart','sideLongClick'].forEach(function(ev){
@@ -1227,7 +1327,7 @@ updatePlayer(dt);updateHunger(dt);updateBlockPhysics();updateWaterFlow(dt);updat
 // Autosave: persist progress periodically so R1 reloads/crashes never erase it.
 autoSaveTimer+=(dt*16.67);
 if(autoSaveTimer>=AUTO_SAVE_INTERVAL){autoSaveTimer=0;try{if(saveGame('Autosave')){r1Toast('Autosaved',1200);}}catch(e){}}if(miningTarget.x!=cursorX||miningTarget.y!=cursorY){miningProgress=0;miningTarget.x=cursorX;miningTarget.y=cursorY;}
-render();renderDroppedItems(ctx,camX,camY);renderAutoLock();renderAutoCombat(ctx,camX,camY);renderWeather();updateContextPanel();renderHUD();
+render();renderDroppedItems(ctx,camX,camY);renderAutoLock();renderAutoCombat(ctx,camX,camY);renderWeather();updateContextPanel();renderHUD();renderMobArrows(ctx,camX,camY);
 if(gameMsgTimer>0){ctx.save();ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(20,120,200,20);ctx.fillStyle='#ff4';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(gameMsg,120,134);ctx.restore();gameMsgTimer--;}
 
 }
@@ -1238,6 +1338,7 @@ ctx.font='8px monospace';ctx.fillStyle='#ff4';ctx.fillText('Tap or press to resp
 ctx.font='7px monospace';ctx.fillStyle='#aaa';ctx.fillText('Items dropped at death location',W/2,150);
 ctx.textAlign='left';
 }
+if(gameState=='crafting')try{updateCraftingLive();}catch(e){}
 requestAnimationFrame(gameLoop);
 }
 // Touch-to-mine/place on canvas (R1 touch screen): cursor tracks touch; tap action resolves on release.
@@ -1516,9 +1617,41 @@ function toolMismatch(bx,by){return isToolMismatch(bx,by);}
 function toolMismatchMessage(bx,by){return getToolMismatchMessage(bx,by);}
 function applyAccessibilityMode(){return toggleAccessibility();}
 function clearToastHistory(){toastHistory=[];return true;}
-function toggleLowMotion(){lowMotionMode=!lowMotionMode;r1Toast('Low motion: '+(lowMotionMode?'ON':'OFF'),1200);return lowMotionMode;}
-function toggleHighContrast(){highContrastMode=!highContrastMode;try{document.body.classList.toggle('high-contrast',highContrastMode);document.body.classList.toggle('low-motion',lowMotionMode);}catch(e){}r1Toast('High contrast: '+(highContrastMode?'ON':'OFF'),1200);return highContrastMode;}
-function toggleAccessibility(){accessibilityMode=!accessibilityMode;r1Toast('Accessibility: '+(accessibilityMode?'ON':'OFF'),1200);return accessibilityMode;}
+var SETTINGS_STORAGE_KEY='r1mc_settings_v1';
+function getQualitySettings(){return {lowMotion:!!lowMotionMode,highContrast:!!highContrastMode,accessibility:!!accessibilityMode};}
+function loadQualitySettings(){
+  try{
+    var raw=localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if(raw){
+      var s=JSON.parse(raw);
+      if(s&&typeof s==='object'){
+        lowMotionMode=!!s.lowMotion;
+        highContrastMode=!!s.highContrast;
+        accessibilityMode=!!s.accessibility;
+      }
+    }
+  }catch(e){}
+  applyVisualModes();
+  return getQualitySettings();
+}
+function saveQualitySettings(){
+  try{localStorage.setItem(SETTINGS_STORAGE_KEY,JSON.stringify(getQualitySettings()));}catch(e){}
+  return getQualitySettings();
+}
+function resetGlobalInputs(){
+  keys.left=false;keys.right=false;keys.up=false;keys.down=false;
+  touchState.active=false;touchState.moved=false;touchState.longPressed=false;touchState.joystickX=0;touchState.joystickY=0;
+  touchActive=false;touchMoved=false;touchLongPressed=false;touchLongPressHandled=false;
+  clearTouchLongPress();
+  miningProgress=0;miningTarget={x:-1,y:-1};
+  player.mining=0;player.mineX=-1;player.mineY=-1;
+  autoCombatTarget=null;autoLockTarget=null;autoLockPulse=0;
+  pointerCancelled=false;
+  return true;
+}
+function toggleLowMotion(){lowMotionMode=!lowMotionMode;saveQualitySettings();applyVisualModes();r1Toast('Low motion: '+(lowMotionMode?'ON':'OFF'),1200);return lowMotionMode;}
+function toggleHighContrast(){highContrastMode=!highContrastMode;saveQualitySettings();applyVisualModes();r1Toast('High contrast: '+(highContrastMode?'ON':'OFF'),1200);return highContrastMode;}
+function toggleAccessibility(){accessibilityMode=!accessibilityMode;saveQualitySettings();applyVisualModes();r1Toast('Accessibility: '+(accessibilityMode?'ON':'OFF'),1200);return accessibilityMode;}
 function applyVisualModes(){try{document.body.classList.toggle('high-contrast',highContrastMode);document.body.classList.toggle('low-motion',lowMotionMode);}catch(e){}}
 function togglePause(){if(gameState=='playing'){pauseGame();}else if(gameState=='paused'){resumeGame();}else if(gameState=='title'){/* no-op */}}
 
@@ -1544,6 +1677,41 @@ function closeHelp(){document.getElementById('r1-help').style.display='none';}
 function torchPlace(){placeBlock();r1Vibrate(20);}
 function useSeeds(){placeBlock();r1Vibrate(20);}
 
+var MOB_ARROW_HOSTILES=['zombie','skeleton','creeper','cave_spider','cave_skeleton'];
+function isHostileMobType(t){return MOB_ARROW_HOSTILES.indexOf(t)>=0;}
+function getMobArrowIndicators(){
+  var out=[];
+  if(!world||!world.length)return out;
+  for(var i=0;i<entities.length;i++){
+    var e=entities[i];if(!e)continue;
+    if(!isHostileMobType(e.type))continue;
+    var sx=e.x-camX, sy=e.y-camY;
+    if(sx>=8&&sx<=W-8&&sy>=8&&sy<=H-8)continue; // on-screen: no arrow
+    var cx=Math.max(8,Math.min(W-8,sx)), cy=Math.max(8,Math.min(H-8,sy));
+    var angle=Math.atan2(sy-cy?0:sy-cy, sx-cx?0:sx-cx);
+    // compute angle toward mob from clamped point not useful; use from screen center
+    angle=Math.atan2(e.y-(camY+H/2), e.x-(camX+W/2));
+    out.push({x:cx,y:cy,type:e.type,angle:angle,dist:Math.sqrt((player.x-e.x)*(player.x-e.x)+(player.y-e.y)*(player.y-e.y))});
+  }
+  return out;
+}
+function renderMobArrows(ctx2,camXArg,camYArg){
+  if(!ctx2||gameState!=='playing')return;
+  var oldAlpha=ctx2.globalAlpha;ctx2.globalAlpha=0.85;
+  var arrows=getMobArrowIndicators();
+  for(var i=0;i<arrows.length;i++){
+    var a=arrows[i];
+    ctx2.save();
+    ctx2.translate(a.x,a.y);
+    ctx2.rotate(a.angle);
+    ctx2.fillStyle='#f33';
+    ctx2.beginPath();
+    ctx2.moveTo(6,0);ctx2.lineTo(-4,-3);ctx2.lineTo(-4,3);ctx2.closePath();
+    ctx2.fill();
+    ctx2.restore();
+  }
+  ctx2.globalAlpha=oldAlpha;
+}
 // === INVENTORY TOGGLE ===
 function toggleInventory(){if(gameState=='inventory'){hideInventory();gameState='playing';}else if(gameState=='playing'){showInventory();gameState='inventory';}}
 function showInventory(){var sc=document.getElementById('inv-fullscreen-screen');if(!sc){createInventoryScreen();sc=document.getElementById('inv-fullscreen-screen');}sc.style.display='flex';renderInventory();}
@@ -1632,3 +1800,6 @@ function loadMap(name) {
   lastTime=performance.now();
   requestAnimationFrame(gameLoop);
 }
+try{loadQualitySettings();}catch(e){}
+try{loadCraftingFavorites();}catch(e){}
+try{resetGlobalInputs();}catch(e){}

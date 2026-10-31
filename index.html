@@ -24,10 +24,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 .inv-slot .block-icon{width:14px;height:14px;}
 #craft-screen{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.85);z-index:50;display:none;color:#fff;font-size:8px;overflow-y:auto;}
 #craft-screen h3{text-align:center;padding:4px;font-size:10px;color:#5c3;position:relative;}
-.recipe{display:flex;align-items:center;padding:2px 4px;border-bottom:1px solid #333;cursor:pointer;}
+.recipe{display:flex;align-items:center;padding:1px 3px;border-bottom:1px solid #333;cursor:pointer;gap:3px;}
 .recipe:hover{background:rgba(255,255,255,0.1);}
-.recipe .r-name{flex:1;font-size:7px;}
-.recipe .r-cost{font-size:6px;color:#aaa;}
+.recipe .r-name{flex:1;font-size:6px;}
+.recipe .r-cost{font-size:5px;color:#aaa;}
+.recipe .r-star{cursor:pointer;color:#fd0;font-size:8px;}
 #pause-menu{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.8);z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;}
 #pause-menu h3{font-size:14px;color:#ff4;margin-bottom:8px;}
 #pause-menu .menu-btn{background:#555;color:#fff;border:1px solid #888;padding:8px 12px;font-size:7px;margin:4px;cursor:pointer;font-family:monospace;touch-action:manipulation;width:120px;text-align:center;}
@@ -126,6 +127,9 @@ body.high-contrast{filter:contrast(1.25);}
 body.high-contrast #r1-toast{background:#000;color:#ff0;outline:2px solid #ff0;}
 body.low-motion *{transition:none !important;animation:none !important;}
 body.low-motion #r1-toast{transition:none;}
+#danger-overlay{position:absolute;top:0;left:0;width:240px;height:282px;pointer-events:none;z-index:40;display:none;box-shadow:inset 0 0 60px rgba(255,0,0,0.55);}
+body.danger #danger-overlay{display:block;animation:dangerPulse .6s infinite;}
+@keyframes dangerPulse{0%,100%{opacity:0.35;}50%{opacity:0.8;}}
 </style>
 </head>
 <body>
@@ -138,6 +142,7 @@ body.low-motion #r1-toast{transition:none;}
 <div class="menu-btn" onclick="openLoadScreenFromTitle()" ontouchend="event.preventDefault();openLoadScreenFromTitle()">Load Game</div>
 <div class="menu-btn" onclick="showHelp()" ontouchend="event.preventDefault();showHelp()">Controls</div></div>
 <canvas id="game" width="240" height="282"></canvas>
+<div id="danger-overlay"></div>
 <div id="combat-btn" onclick="toggleAutoCombat()">AC</div>
 <div id="enemy-warn">&#9888; ENEMY</div>
 <div id="autolock-btn" onclick="toggleAutoLock()" ontouchstart="event.stopPropagation()">AL</div>
@@ -146,12 +151,24 @@ body.low-motion #r1-toast{transition:none;}
 <div id="zoom-btn" onclick="toggleZoom()">&#128269;</div>
 <div id="zoom-panel"><span id="zoom-label">1.0x</span><input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1" oninput="setZoom(this.value)" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()"></div>
 <div id="health-bar"></div>
+<div id="hud-values" style="position:absolute;top:13px;left:60px;color:#fff;font-size:6px;z-index:10;text-shadow:1px 1px #000;pointer-events:none;"></div>
 <!-- hunger bar removed -->
 <div id="fly-indicator">FLYING</div>
 <div id="time-display"></div><div id="coord-display" style="position:absolute;top:12px;right:56px;font-size:6px;color:#0f0;z-index:10;text-shadow:1px 1px #000;"></div>
 <div id="inv-bar"></div>
 <div id="craft-btn" onclick="toggleCraftingMenu()" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()">Craft</div>
-<div id="craft-screen"><h3>Crafting<span id="craft-close-btn" onclick="hideCrafting()" ontouchstart="event.stopPropagation()">X</span></h3><div id="recipe-list"></div></div>
+<div id="craft-screen">
+<h3>Crafting<span id="craft-close-btn" onclick="hideCrafting()" ontouchstart="event.stopPropagation()">X</span></h3>
+<div style="padding:3px 4px;display:flex;gap:3px;align-items:center;">
+<input id="craft-search" type="search" placeholder="Search recipes" style="flex:1;background:#222;border:1px solid #5c3;color:#fff;font-size:7px;padding:2px;" oninput="setCraftingSearchQuery(this.value);renderCraftingList();">
+<select id="craft-filter" style="background:#222;border:1px solid #5c3;color:#fff;font-size:7px;padding:2px;" onchange="setCraftingFilter(this.value);renderCraftingList();">
+<option value="all">All</option>
+<option value="favorites">Favorites</option>
+<option value="craftable">Craftable</option>
+</select>
+</div>
+<div id="recipe-list" style="overflow-y:auto;max-height:230px;"></div>
+</div>
 <div id="furnace-screen"><h3>&#128293; Furnace</h3><div class="fuel-info">Fuel: 1 Coal per smelt</div><div id="smelt-list"></div><div class="close-btn" onclick="closeFurnace()" ontouchend="event.preventDefault();closeFurnace()">Close</div></div>
 <div id="pause-menu"><h3>PAUSED</h3><div class="menu-btn" onclick="resumeGame()">Resume</div><div class="menu-btn" onclick="restartGame()">Restart</div><div class="menu-btn" onclick="openSaveScreen()">Save Game</div><div class="menu-btn" onclick="openLoadScreen()">Load Game</div><div class="menu-btn" onclick="toggleLowMotion()">Low Motion</div><div class="menu-btn" onclick="toggleHighContrast()">High Contrast</div><div class="menu-btn" onclick="toggleAccessibility()">Accessibility</div><div class="menu-btn" onclick="r1Toast('Toasts: '+getToastHistory().length,1400)">Toast History</div><div class="menu-btn quit" onclick="quitToMenu()">Quit to Menu</div></div>
 <div id="chest-screen"><h3>Chest Storage</h3><div id="chest-slots"></div><h3>Your Inventory</h3><div id="chest-inv"></div></div>
