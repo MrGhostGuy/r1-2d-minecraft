@@ -16,11 +16,11 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #title .menu-btn{background:#555;color:#fff;border:1px solid #888;padding:8px 12px;font-size:6px;margin:4px;cursor:pointer;font-family:monospace;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,0.3);user-select:none;-webkit-user-select:none;}
 #title .menu-btn:hover{background:#777;}
 #hud{position:absolute;top:0;left:0;width:240px;pointer-events:none;z-index:10;}
-#coord-display{position:absolute;top:12px;right:56px;font-size:6px;color:#0f0;z-index:10;text-shadow:1px 1px #000;}
+#coord-display{position:absolute;top:12px;right:56px;font-size:7px;color:#0f0;z-index:10;text-shadow:1px 1px #000,0 0 4px #0f0;}
 #inv-bar{position:absolute;bottom:0;left:0;width:240px;height:22px;background:rgba(0,0,0,0.7);display:flex;z-index:10;}
 .inv-slot{position:relative;width:24px;height:22px;border:1px solid #555;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;}
 .inv-slot.selected{border-color:#fff;background:rgba(255,255,255,0.2);}
-.inv-slot .count{font-size:6px;color:#fff;position:absolute;bottom:0;right:1px;}
+.inv-slot .count{font-size:7px;color:#fff;position:absolute;bottom:0;right:1px;text-shadow:1px 1px #000;}
 .inv-slot .block-icon{width:14px;height:14px;}
 #craft-screen{position:absolute;top:0;left:0;width:240px;height:282px;background:rgba(0,0,0,0.85);z-index:50;display:none;color:#fff;font-size:8px;overflow-y:auto;}
 #craft-screen h3{text-align:center;padding:4px;font-size:10px;color:#5c3;position:relative;}
@@ -38,7 +38,7 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;}
 #hunger-bar{position:absolute;top:12px;left:2px;z-index:10;display:none;}
 #fly-indicator{position:absolute;top:22px;left:2px;color:#0ff;font-size:7px;z-index:10;display:none;}
 #health-bar{position:absolute;top:2px;left:2px;z-index:10;}
-#time-display{position:absolute;top:2px;right:56px;font-size:7px;color:#fff;z-index:10;text-shadow:1px 1px #000;}
+#time-display{position:absolute;top:2px;right:56px;font-size:8px;color:#fff;z-index:10;text-shadow:1px 1px #000,0 0 4px #000;}
 #zoom-btn{position:absolute;top:2px;right:2px;width:24px;height:24px;background:rgba(0,0,0,0.6);border:1px solid #888;border-radius:4px;color:#fff;font-size:14px;cursor:pointer;z-index:20;display:block;text-align:center;line-height:24px;}
 #zoom-btn:active{background:rgba(255,255,255,0.3);}
 #zoom-panel{position:absolute;top:28px;left:0;width:240px;height:22px;background:rgba(0,0,0,0.7);display:none;z-index:20;align-items:center;justify-content:center;padding:0 4px;box-sizing:border-box;}
@@ -151,7 +151,7 @@ body.danger #danger-overlay{display:block;animation:dangerPulse .6s infinite;}
 <div id="zoom-btn" onclick="toggleZoom()">&#128269;</div>
 <div id="zoom-panel"><span id="zoom-label">1.0x</span><input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1" oninput="setZoom(this.value)" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" ontouchend="event.stopPropagation()"></div>
 <div id="health-bar"></div>
-<div id="hud-values" style="position:absolute;top:13px;left:60px;color:#fff;font-size:6px;z-index:10;text-shadow:1px 1px #000;pointer-events:none;"></div>
+<div id="hud-values" style="position:absolute;top:13px;left:60px;color:#fff;font-size:7px;z-index:10;text-shadow:1px 1px #000,0 0 3px #000;pointer-events:none;"></div>
 <!-- hunger bar removed -->
 <div id="fly-indicator">FLYING</div>
 <div id="time-display"></div><div id="coord-display" style="position:absolute;top:12px;right:56px;font-size:6px;color:#0f0;z-index:10;text-shadow:1px 1px #000;"></div>
@@ -170,7 +170,7 @@ body.danger #danger-overlay{display:block;animation:dangerPulse .6s infinite;}
 <div id="recipe-list" style="overflow-y:auto;max-height:230px;"></div>
 </div>
 <div id="furnace-screen"><h3>&#128293; Furnace</h3><div class="fuel-info">Fuel: 1 Coal per smelt</div><div id="smelt-list"></div><div class="close-btn" onclick="closeFurnace()" ontouchend="event.preventDefault();closeFurnace()">Close</div></div>
-<div id="pause-menu"><h3>PAUSED</h3><div class="menu-btn" onclick="resumeGame()">Resume</div><div class="menu-btn" onclick="restartGame()">Restart</div><div class="menu-btn" onclick="openSaveScreen()">Save Game</div><div class="menu-btn" onclick="openLoadScreen()">Load Game</div><div class="menu-btn" onclick="toggleLowMotion()">Low Motion</div><div class="menu-btn" onclick="toggleHighContrast()">High Contrast</div><div class="menu-btn" onclick="toggleAccessibility()">Accessibility</div><div class="menu-btn" onclick="r1Toast('Toasts: '+getToastHistory().length,1400)">Toast History</div><div class="menu-btn quit" onclick="quitToMenu()">Quit to Menu</div></div>
+<div id="pause-menu"><h3>PAUSED</h3><div class="menu-btn" onclick="resumeGame()">Resume</div><div class="menu-btn" onclick="restartGame()">Restart</div><div class="menu-btn" onclick="openSaveScreen()">Save Game</div><div class="menu-btn" onclick="openLoadScreen()">Load Game</div><div class="menu-btn" onclick="toggleMute()">Sound Mute/Unmute</div><div class="menu-btn" onclick="toggleLowMotion()">Low Motion</div><div class="menu-btn" onclick="toggleHighContrast()">High Contrast</div><div class="menu-btn" onclick="toggleAccessibility()">Accessibility</div><div class="menu-btn" onclick="setQualityProfile('high');r1Toast('Quality: High',1200)">Quality High</div><div class="menu-btn" onclick="r1Toast('Toasts: '+getToastHistory().length,1400)">Toast History</div><div class="menu-btn quit" onclick="quitToMenu()">Quit to Menu</div></div>
 <div id="chest-screen"><h3>Chest Storage</h3><div id="chest-slots"></div><h3>Your Inventory</h3><div id="chest-inv"></div></div>
 <script src="game.js"></script>
 <div id="save-screen"><h3>SAVE GAME</h3><div id="save-slots-list"></div><button class="save-menu-btn" onclick="doSaveGame()">Save New</button><button class="save-menu-btn cancel" onclick="closeSaveScreen()">Cancel</button></div>
