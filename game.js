@@ -962,7 +962,7 @@ function getTorchGlow(wx,wy,radius){
   if(light<=0) return 0;
   var flicker = 0.7 + 0.3*Math.sin(Date.now()/120);
   return light*flicker;
-}}
+}
 function applyLightingOverlay(ctx2,isNight2,weatherIntensity2){if(!ctx2)return;ctx2.save();ctx2.fillStyle='rgba(0,0,12,'+((isNight2?0.30:0.08)+ (weatherIntensity2||0)*0.15)+')';ctx2.fillRect(0,0,W,H);ctx2.restore();}
 function createRadialHole(ctx2,cx,cy,r){if(!ctx2||typeof ctx2.createRadialGradient!=='function')return;var g=ctx2.createRadialGradient(cx,cy,0,cx,cy,r);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(1,'rgba(0,0,0,0)');ctx2.save();ctx2.globalCompositeOperation='destination-out';ctx2.fillStyle=g;ctx2.beginPath();ctx2.arc(cx,cy,r,0,Math.PI*2);if(typeof ctx2.fill==='function')ctx2.fill();ctx2.restore();}
 function getCameraPosition(){return {x:camX,y:camY};}
